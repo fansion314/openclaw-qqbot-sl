@@ -1,0 +1,16 @@
+allowBuilds:
+  "@google/genai": false
+  esbuild: false
+  openclaw: false
+  protobufjs: false
+minimumReleaseAgeExclude:
+  - "@voidzero-dev/vite-plus-core@1.5.1"
+  - "@voidzero-dev/vite-plus-darwin-arm64@1.5.1"
+  - "@voidzero-dev/vite-plus-darwin-x64@1.5.1"
+  - "@voidzero-dev/vite-plus-linux-arm64-gnu@1.5.1"
+  - "@voidzero-dev/vite-plus-linux-arm64-musl@1.5.1"
+  - "@voidzero-dev/vite-plus-linux-x64-gnu@1.5.1"
+  - "@voidzero-dev/vite-plus-linux-x64-musl@1.5.1"
+  - "@voidzero-dev/vite-plus-win32-arm64-msvc@1.5.1"
+  - "@voidzero-dev/vite-plus-win32-x64-msvc@1.5.1"
+  - vite-plus@1.5.1

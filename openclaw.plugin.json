@@ -1,0 +1,558 @@
+{
+  "id": "world.fansionia.openclaw-qqbot-snowluma",
+  "name": "SnowLuma QQ",
+  "description": "Natural QQ conversations using SnowLuma OneBot v11",
+  "channels": ["qq-snowluma"],
+  "contracts": {
+    "tools": ["snowluma_context"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "channelConfigs": {
+    "qq-snowluma": {
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["autonomous", "mention"]
+          },
+          "batchIntervalMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "maxMessages": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "idleEnabled": {
+            "type": "boolean"
+          },
+          "idleAfterMs": {
+            "type": "integer",
+            "minimum": 1000
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "style": {
+            "type": "string"
+          },
+          "activeHours": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["start", "end"],
+            "properties": {
+              "start": {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+              },
+              "end": {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+              }
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "wsUrl": {
+            "type": "string",
+            "pattern": "^wss?://"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "accessTokenEnv": {
+            "type": "string"
+          },
+          "accessTokenFile": {
+            "type": "string"
+          },
+          "selfId": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "requestTimeoutMs": {
+            "type": "integer",
+            "minimum": 1000
+          },
+          "reconnect": {
+            "type": "boolean"
+          },
+          "cacheLimit": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "retentionDays": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "statePath": {
+            "type": "string"
+          },
+          "maxOutputMessages": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "maxOutputChars": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "mediaMaxBytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "mediaRoots": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "repairFormat": {
+            "type": "boolean"
+          },
+          "groups": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": ["autonomous", "mention"]
+                },
+                "batchIntervalMs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "maxMessages": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 500
+                },
+                "idleEnabled": {
+                  "type": "boolean"
+                },
+                "idleAfterMs": {
+                  "type": "integer",
+                  "minimum": 1000
+                },
+                "timeZone": {
+                  "type": "string"
+                },
+                "style": {
+                  "type": "string"
+                },
+                "activeHours": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["start", "end"],
+                  "properties": {
+                    "start": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    },
+                    "end": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    }
+                  }
+                },
+                "initialBatchWaitMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 30000
+                },
+                "initialBatchMaxWaitMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 30000
+                }
+              }
+            }
+          },
+          "privateChats": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": ["autonomous", "mention"]
+                },
+                "batchIntervalMs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "maxMessages": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 500
+                },
+                "idleEnabled": {
+                  "type": "boolean"
+                },
+                "idleAfterMs": {
+                  "type": "integer",
+                  "minimum": 1000
+                },
+                "timeZone": {
+                  "type": "string"
+                },
+                "style": {
+                  "type": "string"
+                },
+                "activeHours": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["start", "end"],
+                  "properties": {
+                    "start": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    },
+                    "end": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    }
+                  }
+                },
+                "initialBatchWaitMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 30000
+                },
+                "initialBatchMaxWaitMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 30000
+                }
+              }
+            }
+          },
+          "defaultAccount": {
+            "type": "string"
+          },
+          "accounts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": ["autonomous", "mention"]
+                },
+                "batchIntervalMs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "maxMessages": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 500
+                },
+                "idleEnabled": {
+                  "type": "boolean"
+                },
+                "idleAfterMs": {
+                  "type": "integer",
+                  "minimum": 1000
+                },
+                "timeZone": {
+                  "type": "string"
+                },
+                "style": {
+                  "type": "string"
+                },
+                "activeHours": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["start", "end"],
+                  "properties": {
+                    "start": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    },
+                    "end": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    }
+                  }
+                },
+                "name": {
+                  "type": "string"
+                },
+                "wsUrl": {
+                  "type": "string",
+                  "pattern": "^wss?://"
+                },
+                "accessToken": {
+                  "type": "string"
+                },
+                "accessTokenEnv": {
+                  "type": "string"
+                },
+                "accessTokenFile": {
+                  "type": "string"
+                },
+                "selfId": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "requestTimeoutMs": {
+                  "type": "integer",
+                  "minimum": 1000
+                },
+                "reconnect": {
+                  "type": "boolean"
+                },
+                "cacheLimit": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "retentionDays": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "statePath": {
+                  "type": "string"
+                },
+                "maxOutputMessages": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "maxOutputChars": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "mediaMaxBytes": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "mediaRoots": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "repairFormat": {
+                  "type": "boolean"
+                },
+                "groups": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "mode": {
+                        "type": "string",
+                        "enum": ["autonomous", "mention"]
+                      },
+                      "batchIntervalMs": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "maxMessages": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 500
+                      },
+                      "idleEnabled": {
+                        "type": "boolean"
+                      },
+                      "idleAfterMs": {
+                        "type": "integer",
+                        "minimum": 1000
+                      },
+                      "timeZone": {
+                        "type": "string"
+                      },
+                      "style": {
+                        "type": "string"
+                      },
+                      "activeHours": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["start", "end"],
+                        "properties": {
+                          "start": {
+                            "type": "string",
+                            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                          },
+                          "end": {
+                            "type": "string",
+                            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                          }
+                        }
+                      },
+                      "initialBatchWaitMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 30000
+                      },
+                      "initialBatchMaxWaitMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 30000
+                      }
+                    }
+                  }
+                },
+                "privateChats": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "mode": {
+                        "type": "string",
+                        "enum": ["autonomous", "mention"]
+                      },
+                      "batchIntervalMs": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "maxMessages": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 500
+                      },
+                      "idleEnabled": {
+                        "type": "boolean"
+                      },
+                      "idleAfterMs": {
+                        "type": "integer",
+                        "minimum": 1000
+                      },
+                      "timeZone": {
+                        "type": "string"
+                      },
+                      "style": {
+                        "type": "string"
+                      },
+                      "activeHours": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["start", "end"],
+                        "properties": {
+                          "start": {
+                            "type": "string",
+                            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                          },
+                          "end": {
+                            "type": "string",
+                            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                          }
+                        }
+                      },
+                      "initialBatchWaitMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 30000
+                      },
+                      "initialBatchMaxWaitMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 30000
+                      }
+                    }
+                  }
+                },
+                "initialBatchWaitMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 30000
+                },
+                "initialBatchMaxWaitMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 30000
+                },
+                "sendMinDelayMs": {
+                  "type": "integer",
+                  "minimum": 1000,
+                  "maximum": 10000
+                },
+                "sendMaxDelayMs": {
+                  "type": "integer",
+                  "minimum": 1000,
+                  "maximum": 10000
+                },
+                "sendSaturationChars": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                }
+              }
+            }
+          },
+          "initialBatchWaitMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30000
+          },
+          "initialBatchMaxWaitMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30000
+          },
+          "sendMinDelayMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 10000
+          },
+          "sendMaxDelayMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 10000
+          },
+          "sendSaturationChars": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          }
+        }
+      },
+      "uiHints": {
+        "accessToken": {
+          "label": "OneBot access token",
+          "sensitive": true
+        },
+        "accessTokenEnv": {
+          "label": "Token environment variable"
+        },
+        "wsUrl": {
+          "label": "SnowLuma WebSocket URL"
+        }
+      }
+    }
+  }
+}

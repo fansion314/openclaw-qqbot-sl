@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tgz
+.cache/
+*.sqlite*
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Local deployment details and live-account test harnesses.
+docs/local/
+examples/yama.json
+scripts/prepare-live-host.py
+scripts/live-onebot.mjs

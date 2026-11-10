@@ -1,0 +1,58 @@
+{
+  "plugins": {
+    "allow": ["world.fansionia.openclaw-qqbot-snowluma"],
+    "entries": {
+      "world.fansionia.openclaw-qqbot-snowluma": {
+        "enabled": true
+      }
+    }
+  },
+  "channels": {
+    "qq-snowluma": {
+      "enabled": true,
+      "wsUrl": "ws://127.0.0.1:3001/",
+      "accessTokenEnv": "SNOWLUMA_ACCESS_TOKEN",
+      "selfId": "10001",
+      "groups": {
+        "20001": {
+          "mode": "autonomous",
+          "batchIntervalMs": 30000,
+          "idleEnabled": true,
+          "activeHours": {
+            "start": "09:00",
+            "end": "23:00"
+          }
+        },
+        "20002": {
+          "mode": "mention",
+          "idleEnabled": false
+        }
+      },
+      "privateChats": {
+        "10002": {
+          "idleEnabled": false
+        }
+      },
+      "mediaRoots": ["/absolute/path/to/approved/media"]
+    }
+  },
+  "agents": {
+    "entries": {
+      "rion": {
+        "workspace": "~/.openclaw/workspace-rion",
+        "identity": {
+          "name": "璃音（Rion）",
+          "emoji": "🐾"
+        }
+      }
+    }
+  },
+  "bindings": [
+    {
+      "agentId": "rion",
+      "match": {
+        "channel": "qq-snowluma"
+      }
+    }
+  ]
+}
