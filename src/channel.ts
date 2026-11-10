@@ -9,6 +9,7 @@ import {
   sendDurableMessageBatch,
 } from "openclaw/plugin-sdk/channel-outbound";
 import type { OpenClawPluginApi, AnyAgentTool } from "openclaw/plugin-sdk/core";
+import { getAgentScopedMediaLocalRoots } from "openclaw/plugin-sdk/media-local-roots";
 import {
   applyAccountNameToChannelSection,
   deleteAccountFromConfigSection,
@@ -331,7 +332,13 @@ async function nativeAction(
       if (!source) throw new Error("Media source is required");
       const file = await uploadAuthorizedMedia(bot, source, {
         ...mediaAuthorization,
-        configuredRoots: account.settings.mediaRoots ?? [],
+        configuredRoots:
+          account.settings.mediaRoots ??
+          getAgentScopedMediaLocalRoots(
+            cfg,
+            TARGET_AGENT_ID,
+            getRuntime().agent.resolveAgentWorkspaceDir(cfg, TARGET_AGENT_ID),
+          ),
         maxBytes: account.settings.mediaMaxBytes ?? 50 * 1024 * 1024,
         signal,
       });

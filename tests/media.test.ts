@@ -32,6 +32,11 @@ describe("OpenClaw media authorization", () => {
       prepareOutboundMedia(file, { mediaAccess: { localRoots: [] }, configuredRoots: [root] }),
     ).rejects.toThrow();
   });
+  it("fills roots missing from an empty host text-delivery capability without dropping that capability", async () => {
+    const { root, file, buffer } = await image();
+    const result = await prepareOutboundMedia(file, { mediaAccess: {}, configuredRoots: [root] });
+    expect(result.buffer).toEqual(buffer);
+  });
   it("honors the host read capability instead of independently reading a file", async () => {
     const { root, file, buffer } = await image();
     const reads: string[] = [];

@@ -15,7 +15,7 @@ pnpm install --frozen-lockfile --ignore-scripts
 pnpm check
 pnpm pack
 # 在运行 OpenClaw 的主机安装生成的包：
-openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.4.tgz
+openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.6.tgz
 ```
 
 本地开发可在构建后使用 `openclaw plugins install --link .`。安装包包含已编译 JavaScript，不依赖主机即时编译 TypeScript。
@@ -107,3 +107,5 @@ WebUI以XML代码块保留换行，每条msg的标签和正文分行。`history`
 实时消息中的独立 `/new`（可带一次真实@机器人）在XML包装前识别，并通过OpenClaw原生命令流程重置当前群会话。历史、引用、代码或普通正文中的/new不触发。群白名单不授予命令权限；需在现有 `commands.allowFrom` 中追加 `"qq-snowluma": ["你的QQ号"]`，或使用宿主已有的所有者授权。不要覆盖其他通道的命令权限。
 
 重置会保留旧记录、开始新的上下文；同批次中/new之后的新消息留给fresh会话。用户定义按实际会话生命周期重新提供，不因宿主复用sessionId而丢失。私有部署命令白名单不会包含在仓库示例。
+
+结构化 `<image src="本地路径"/>` 等媒体输出会在未显式限制mediaRoots时使用宿主认可的rion媒体目录，包括其工作区。宿主提供的mediaAccess权限仍优先，显式空权限不会被默认目录覆盖；main或其他目录不会因此获得发送权限。

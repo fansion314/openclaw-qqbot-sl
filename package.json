@@ -1,6 +1,6 @@
 {
   "name": "@fansionia/openclaw-qqbot-snowluma",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "description": "Natural QQ conversations for OpenClaw through SnowLuma OneBot v11",
   "files": [
     "dist",

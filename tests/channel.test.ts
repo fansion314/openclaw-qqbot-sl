@@ -110,7 +110,7 @@ async function fixture(
   let sessionId = "fixture-session-1";
   let lifecycleRevision = "initial-generation";
   const cfg = {
-    agents: { entries: { rion: {} } },
+    agents: { entries: { rion: { workspace: directory } } },
     ...(options.commandAllowFrom
       ? { commands: { allowFrom: { [CHANNEL_ID]: options.commandAllowFrom } } }
       : {}),
@@ -131,6 +131,8 @@ async function fixture(
   const errors: string[] = [];
   setRuntime({
     agent: {
+      resolveAgentWorkspaceDir: (config: OpenClawConfig, agentId: string) =>
+        config.agents!.entries![agentId]!.workspace!,
       session: {
         getSessionEntryAsync: async () => ({ sessionId, lifecycleRevision, updatedAt: Date.now() }),
       },
@@ -239,6 +241,41 @@ async function fixture(
 }
 
 describe("channel orchestration with injected host and transport", () => {
+  it("sends structured local images using host-approved rion roots when text delivery has no media hints", async () => {
+    const f = await fixture(async () => {});
+    const workspace = (f.cfg.agents!.entries!.rion as { workspace: string }).workspace;
+    const file = join(workspace, "portrait.png");
+    await writeFile(
+      file,
+      Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jS1cAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    );
+    await snowlumaPlugin.outbound!.sendText!({
+      cfg: f.cfg,
+      accountId: "default",
+      to: "qq-snowluma:group:20001",
+      sessionKey: "agent:rion:qq-group",
+      mediaAccess: {},
+      text: `<msg><image src="${file}"/></msg>`,
+    } as Parameters<NonNullable<NonNullable<typeof snowlumaPlugin.outbound>["sendText"]>>[0]);
+    expect(f.bot.uploads).toHaveLength(1);
+    expect(f.bot.sends[0]).toEqual([
+      { type: "image", data: { file: "/snowluma/upload/authorized" } },
+    ]);
+    await expect(
+      snowlumaPlugin.outbound!.sendText!({
+        cfg: f.cfg,
+        accountId: "default",
+        to: "qq-snowluma:group:20001",
+        sessionKey: "agent:rion:qq-group",
+        mediaAccess: { localRoots: [] },
+        text: `<msg><image src="${file}"/></msg>`,
+      } as Parameters<NonNullable<NonNullable<typeof snowlumaPlugin.outbound>["sendText"]>>[0]),
+    ).rejects.toThrow();
+    expect(f.bot.uploads).toHaveLength(1);
+  });
   it("passes actual staged image paths to the multimodal context, not URL-only facts", async () => {
     mocks.inboundImages.mockResolvedValueOnce([
       {

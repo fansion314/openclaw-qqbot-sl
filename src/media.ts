@@ -27,7 +27,7 @@ export async function prepareOutboundMedia(source: string, options: MediaAuthori
   const load = buildOutboundMediaLoadOptions({
     maxBytes,
     optimizeImages: false,
-    mediaAccess: options.mediaAccess,
+    mediaAccess: options.mediaAccess ? { ...options.mediaAccess, localRoots } : undefined,
     mediaLocalRoots: options.mediaAccess ? undefined : localRoots,
     mediaReadFile: options.mediaReadFile,
   });
