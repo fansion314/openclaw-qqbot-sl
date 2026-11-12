@@ -358,6 +358,9 @@ describe("conversation scheduler", () => {
     await vi.advanceTimersByTimeAsync(3600_000);
     expect(batches.map((b) => b.trigger)).toEqual(["message", "idle"]);
     const idle = batches[1]!;
+    expect(idle.events).toEqual([]);
+    expect(idle.droppedCount).toBe(0);
+    expect(store.batchRecord(idle.id)?.trigger).toBe("idle");
     expect(idle.isCurrent()).toBe(true);
     await vi.advanceTimersByTimeAsync(3600_000 * 2);
     expect(batches).toHaveLength(2);
@@ -381,6 +384,156 @@ describe("conversation scheduler", () => {
     expect(afterRestart).toHaveLength(0);
     await recovered.close();
     store.close();
+  });
+
+  it("retries idle admission failures after five seconds without consuming the quiet generation", async () => {
+    let attempts = 0;
+    const { scheduler, store, batches, errors } = setup(
+      { idleEnabled: true, idleAfterMs: 1000 },
+      async (batch, control) => {
+        if (batch.trigger === "idle" && ++attempts === 1) throw new Error("host unavailable");
+        control.accept();
+      },
+    );
+    scheduler.ingest(event("1"));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(store.state("a", "group:1")!.idleAttemptGeneration).toBe(-1);
+    expect(store.batchRecord(batches[1]!.id)).toMatchObject({
+      trigger: "idle",
+      outcome: "generation_failed",
+    });
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(attempts).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(attempts).toBe(2);
+    expect(store.state("a", "group:1")!.idleAttemptGeneration).toBe(1);
+    await vi.advanceTimersByTimeAsync(100_000);
+    expect(attempts).toBe(2);
+    expect(errors).toHaveLength(1);
+    await scheduler.close();
+    store.close();
+  });
+
+  it("waits after transport cancellation observed before human enrichment without logging an admission error", async () => {
+    let attempts = 0;
+    const { scheduler, store, batches, errors } = setup(
+      { idleEnabled: true, idleAfterMs: 1000 },
+      async (batch, control) => {
+        if (batch.trigger === "idle" && ++attempts === 1) {
+          batch.recordOutcome("cancelled");
+          return;
+        }
+        control.accept();
+      },
+    );
+    scheduler.ingest(event("1"));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(store.batchRecord(batches[1]!.id)).toMatchObject({
+      status: "completed",
+      outcome: "cancelled",
+    });
+    expect(store.state("a", "group:1")!.idleAttemptGeneration).toBe(-1);
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(attempts).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(attempts).toBe(2);
+    expect(errors).toEqual([]);
+    await scheduler.close();
+    store.close();
+  });
+
+  it("does not replay accepted idle failure and preserves an explicit send failure outcome", async () => {
+    const { scheduler, store, batches } = setup(
+      { idleEnabled: true, idleAfterMs: 1000 },
+      async (batch, control) => {
+        control.accept();
+        if (batch.trigger === "idle") {
+          batch.recordOutcome("send_failed", "Provider outcome uncertain");
+          throw new Error("transport closed after request");
+        }
+      },
+    );
+    scheduler.ingest(event("1"));
+    await vi.advanceTimersByTimeAsync(100_000);
+    expect(batches.map((batch) => batch.trigger)).toEqual(["message", "idle"]);
+    expect(store.batchRecord(batches[1]!.id)).toMatchObject({
+      outcome: "send_failed",
+      status: "failed",
+    });
+    await scheduler.close();
+    store.close();
+  });
+
+  it("cancels a reserved idle run after a human message and keeps that new input pending", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { scheduler, store, batches } = setup(
+      { idleEnabled: true, idleAfterMs: 1000 },
+      async (batch, control) => {
+        if (batch.trigger === "idle") {
+          await gate;
+          if (!batch.isCurrent()) return;
+        }
+        control.accept();
+      },
+    );
+    scheduler.ingest(event("1"));
+    await vi.advanceTimersByTimeAsync(1000);
+    scheduler.ingest(event("2"));
+    const idle = batches[1]!;
+    expect(idle.isCurrent()).toBe(false);
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.batchRecord(idle.id)?.outcome).toBe("cancelled");
+    expect(store.state("a", "group:1")!.idleAttemptGeneration).toBe(-1);
+    expect(store.selectForAgent("a", "group:1").events.map((entry) => entry.id)).toEqual(["2"]);
+    await scheduler.close();
+    store.close();
+  });
+
+  it("recovers an unaccepted idle reservation after restart while accepted generations stay consumed", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "snow-idle-restart-"));
+    const path = join(dir, "state.db");
+    const batches: DispatchBatch[] = [];
+    let store = new EventStore(path);
+    store.add(event("1"));
+    const watermark = store.select("a", "group:1").watermark;
+    store.prepareBatch("message", "a", "group:1", watermark, Date.now());
+    store.acceptBatch("message", Date.now());
+    await vi.advanceTimersByTimeAsync(1000);
+    store.prepareBatch("idle-before-crash", "a", "group:1", 0, Date.now(), {
+      trigger: "idle",
+      humanGeneration: 1,
+    });
+    store.close();
+    store = new EventStore(path);
+    const scheduler = new Scheduler({
+      store,
+      policy: () => ({ mode: "autonomous", idleAfterMs: 1000 }),
+      dispatch: async (batch, control) => {
+        batches.push(batch);
+        control.accept();
+      },
+    });
+    try {
+      scheduler.start();
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(batches).toHaveLength(0);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(batches.map((batch) => batch.trigger)).toEqual(["idle"]);
+      await vi.advanceTimersByTimeAsync(100_000);
+      expect(batches).toHaveLength(1);
+      expect(store.batchRecord("idle-before-crash")).toMatchObject({
+        status: "interrupted",
+        outcome: "generation_failed",
+      });
+    } finally {
+      await scheduler.close();
+      store.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("delays idle until active hours while normal messages remain immediate", async () => {

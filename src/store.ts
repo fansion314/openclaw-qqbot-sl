@@ -43,7 +43,17 @@ export interface ConversationState {
   lastHumanAt: number;
   humanGeneration: number;
   idleAttemptGeneration: number;
+  retryAt: number | null;
   exemplar: StoredEvent;
+}
+
+export type BatchTrigger = "message" | "mention" | "idle";
+export type BatchOutcome = "sent" | "cancelled" | "generation_failed" | "send_failed";
+export interface BatchRecord {
+  trigger: BatchTrigger | null;
+  status: string;
+  outcome: BatchOutcome | null;
+  detail: string | null;
 }
 
 export interface EventSelection {
@@ -69,6 +79,7 @@ interface StateRow {
   last_human_at: number;
   human_generation: number;
   idle_attempt_generation: number;
+  retry_at: number | null;
   exemplar: string;
 }
 
@@ -132,6 +143,18 @@ export class EventStore {
     for (const column of ["burst_start_at", "burst_last_at"]) {
       if (!conversationColumns.some((entry) => entry.name === column))
         this.db.exec(`ALTER TABLE conversations ADD COLUMN ${column} INTEGER`);
+    }
+    if (!conversationColumns.some((entry) => entry.name === "retry_at"))
+      this.db.exec("ALTER TABLE conversations ADD COLUMN retry_at INTEGER");
+    const batchColumns = this.db.prepare("PRAGMA table_info(batches)").all() as { name: string }[];
+    for (const [column, type] of [
+      ["trigger", "TEXT"],
+      ["human_generation", "INTEGER"],
+      ["outcome", "TEXT"],
+      ["detail", "TEXT"],
+    ]) {
+      if (!batchColumns.some((entry) => entry.name === column))
+        this.db.exec(`ALTER TABLE batches ADD COLUMN ${column} ${type}`);
     }
   }
 
@@ -262,6 +285,7 @@ export class EventStore {
       lastHumanAt: row.last_human_at,
       humanGeneration: row.human_generation,
       idleAttemptGeneration: row.idle_attempt_generation,
+      retryAt: row.retry_at,
       exemplar: JSON.parse(row.exemplar) as StoredEvent,
     };
   }
@@ -272,6 +296,12 @@ export class EventStore {
         "UPDATE conversations SET burst_start_at=?,burst_last_at=? WHERE account_id=? AND conversation_key=?",
       )
       .run(startAt, lastAt, accountId, key);
+  }
+
+  setRetryAt(accountId: string, key: string, retryAt: number | null): void {
+    this.db
+      .prepare("UPDATE conversations SET retry_at=? WHERE account_id=? AND conversation_key=?")
+      .run(retryAt, accountId, key);
   }
 
   pending(
@@ -355,11 +385,28 @@ export class EventStore {
     };
   }
 
-  prepareBatch(id: string, accountId: string, key: string, watermark: number, now: number): void {
+  prepareBatch(
+    id: string,
+    accountId: string,
+    key: string,
+    watermark: number,
+    now: number,
+    options: { trigger?: BatchTrigger; humanGeneration?: number } = {},
+  ): void {
     this.db
-      .prepare(`INSERT INTO batches(id,account_id,conversation_key,watermark,status,created_at,dropped_count,dropped_wake,dropped_mention)
-      SELECT ?,?,?,?,'prepared',?,dropped_count,dropped_wake,dropped_mention FROM conversations WHERE account_id=? AND conversation_key=?`)
-      .run(id, accountId, key, watermark, now, accountId, key);
+      .prepare(`INSERT INTO batches(id,account_id,conversation_key,watermark,status,created_at,dropped_count,dropped_wake,dropped_mention,trigger,human_generation)
+      SELECT ?,?,?,?,'prepared',?,dropped_count,dropped_wake,dropped_mention,?,? FROM conversations WHERE account_id=? AND conversation_key=?`)
+      .run(
+        id,
+        accountId,
+        key,
+        watermark,
+        now,
+        options.trigger ?? null,
+        options.humanGeneration ?? null,
+        accountId,
+        key,
+      );
   }
 
   eventWatermark(accountId: string, key: string, eventId: string): number | undefined {
@@ -367,6 +414,21 @@ export class EventStore {
       .prepare("SELECT seq FROM events WHERE account_id=? AND conversation_key=? AND event_id=?")
       .get(accountId, key, eventId) as { seq: number } | undefined;
     return row?.seq;
+  }
+
+  /** Stable QQ time ordering, with arrival sequence breaking same-second ties. */
+  hasLaterHumanMessage(accountId: string, key: string, targetId: string): boolean {
+    return Boolean(
+      this.db
+        .prepare(`SELECT 1 FROM events later JOIN events target
+      ON target.account_id=later.account_id AND target.conversation_key=later.conversation_key
+      WHERE target.account_id=? AND target.conversation_key=? AND target.event_id=?
+      AND later.is_self=0 AND later.event IS NOT NULL
+      AND COALESCE(json_extract(later.event,'$.human'),json_extract(later.event,'$.trigger'),1)<>0
+      AND COALESCE(json_extract(later.event,'$.payload.post_type'),'message')='message'
+      AND (later.time>target.time OR (later.time=target.time AND later.seq>target.seq)) LIMIT 1`)
+        .get(accountId, key, targetId),
+    );
   }
 
   acceptBatch(id: string, now: number): void {
@@ -381,6 +443,8 @@ export class EventStore {
             dropped_count: number;
             dropped_wake: number;
             dropped_mention: number;
+            trigger: BatchTrigger | null;
+            human_generation: number | null;
           }
         | undefined;
       if (!row) throw new Error(`Unknown batch ${id}`);
@@ -388,20 +452,35 @@ export class EventStore {
         this.db.exec("COMMIT");
         return;
       }
-      this.db
-        .prepare("UPDATE events SET seen=1 WHERE account_id=? AND conversation_key=? AND seq<=?")
-        .run(row.account_id, row.conversation_key, row.watermark);
-      this.db
-        .prepare(`UPDATE conversations SET last_submission_at=?,burst_start_at=NULL,burst_last_at=NULL,dropped_count=dropped_count-?,
+      if (row.trigger === "idle") {
+        // Reserving an idle run never acknowledges chat input. Consume only the
+        // original quiet generation when the host actually admits the run.
+        this.db
+          .prepare(`UPDATE conversations SET idle_attempt_generation=?,last_submission_at=?,retry_at=NULL
+          WHERE account_id=? AND conversation_key=? AND human_generation=?`)
+          .run(
+            row.human_generation,
+            now,
+            row.account_id,
+            row.conversation_key,
+            row.human_generation,
+          );
+      } else {
+        this.db
+          .prepare("UPDATE events SET seen=1 WHERE account_id=? AND conversation_key=? AND seq<=?")
+          .run(row.account_id, row.conversation_key, row.watermark);
+        this.db
+          .prepare(`UPDATE conversations SET last_submission_at=?,burst_start_at=NULL,burst_last_at=NULL,retry_at=NULL,dropped_count=dropped_count-?,
         dropped_wake=dropped_wake-?,dropped_mention=dropped_mention-? WHERE account_id=? AND conversation_key=?`)
-        .run(
-          now,
-          row.dropped_count,
-          row.dropped_wake,
-          row.dropped_mention,
-          row.account_id,
-          row.conversation_key,
-        );
+          .run(
+            now,
+            row.dropped_count,
+            row.dropped_wake,
+            row.dropped_mention,
+            row.account_id,
+            row.conversation_key,
+          );
+      }
       this.db.prepare("UPDATE batches SET status=? WHERE id=?").run("accepted", id);
       this.db.exec("COMMIT");
     } catch (error) {
@@ -414,6 +493,30 @@ export class EventStore {
     this.db
       .prepare("UPDATE batches SET status=? WHERE id=?")
       .run(failed ? "failed" : "completed", id);
+  }
+
+  recordBatchOutcome(id: string, outcome: BatchOutcome, detail?: string): void {
+    this.db
+      .prepare("UPDATE batches SET outcome=?,detail=? WHERE id=?")
+      .run(outcome, detail?.slice(0, 1000) ?? null, id);
+  }
+
+  batchRecord(id: string): BatchRecord | undefined {
+    return this.db
+      .prepare("SELECT trigger,status,outcome,detail FROM batches WHERE id=?")
+      .get(id) as BatchRecord | undefined;
+  }
+
+  /** Durable idle payloads must still belong to the admitted quiet generation. */
+  idleBatchCurrent(id: string, accountId: string, key: string): boolean {
+    return Boolean(
+      this.db
+        .prepare(`SELECT 1 FROM batches b JOIN conversations c
+      ON c.account_id=b.account_id AND c.conversation_key=b.conversation_key
+      WHERE b.id=? AND b.account_id=? AND b.conversation_key=? AND b.trigger='idle'
+      AND b.status IN ('prepared','accepted') AND b.human_generation=c.human_generation`)
+        .get(id, accountId, key),
+    );
   }
 
   claimIdle(accountId: string, key: string, generation: number): boolean {
@@ -472,8 +575,17 @@ export class EventStore {
   recover(now = Date.now()): void {
     this.db.exec("BEGIN IMMEDIATE");
     try {
+      // Prepared runs have not crossed the host admission/effect boundary.
+      // Their original generation remains available, with a bounded retry delay.
       this.db
-        .prepare("UPDATE batches SET status='interrupted' WHERE status IN ('prepared','accepted')")
+        .prepare(`UPDATE conversations SET retry_at=MAX(COALESCE(retry_at,0),?)
+        WHERE EXISTS (SELECT 1 FROM batches WHERE batches.account_id=conversations.account_id
+          AND batches.conversation_key=conversations.conversation_key AND batches.status='prepared'
+          AND batches.trigger='idle')`)
+        .run(now + 5_000);
+      this.db
+        .prepare(`UPDATE batches SET status='interrupted',outcome=COALESCE(outcome,'generation_failed'),
+          detail=COALESCE(detail,'Process interrupted before batch completion') WHERE status IN ('prepared','accepted')`)
         .run();
       for (const state of this.states())
         this.pruneConversation(state.accountId, state.conversationKey, now);

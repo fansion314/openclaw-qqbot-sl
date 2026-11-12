@@ -4,7 +4,7 @@ export type ReplyPart =
   | { type: "face"; id: string }
   | { type: "image" | "record" | "video" | "file"; ref?: string; src?: string; name?: string };
 export type ReplyAction =
-  | { type: "message"; replyTo?: string; at?: string; parts: ReplyPart[] }
+  | { type: "message"; replyTo?: string; softReplyTo?: string; at?: string; parts: ReplyPart[] }
   | { type: "poke"; userId: string }
   | { type: "reaction"; messageId: string; emojiId: string; set: boolean }
   | { type: "user-name"; userId: string; name: string }
@@ -233,7 +233,9 @@ export class StructuredReplyStream {
       if (name === "msg" && !selfClosing) {
         const end = rest.indexOf("</msg>", open[0].length);
         if (end < 0) return;
-        const a = attrs(rawAttrs, ["reply_to", "at"]);
+        const a = attrs(rawAttrs, ["reply_to", "soft_reply_to", "at"]);
+        if (a.reply_to !== undefined && a.soft_reply_to !== undefined)
+          throw new ProtocolError("reply_to and soft_reply_to are mutually exclusive");
         const body = rest.slice(open[0].length, end);
         if (body.length > (this.options.maxMessageChars ?? 5000))
           throw new ProtocolError("Message length limit exceeded");
@@ -241,6 +243,7 @@ export class StructuredReplyStream {
           type: "message",
           parts: parts(body),
           ...(a.reply_to !== undefined ? { replyTo: messageId(a.reply_to) } : {}),
+          ...(a.soft_reply_to !== undefined ? { softReplyTo: messageId(a.soft_reply_to) } : {}),
           ...(a.at !== undefined ? { at: userId(a.at) } : {}),
         };
         this.consumed += end + 6;

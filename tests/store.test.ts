@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { DatabaseSync } from "node:sqlite";
 import { EventStore, type StoredEvent } from "../src/store.js";
 
 function event(id: string, extra: Partial<StoredEvent> = {}): StoredEvent {
@@ -20,6 +21,90 @@ function event(id: string, extra: Partial<StoredEvent> = {}): StoredEvent {
 }
 
 describe("durable event store", () => {
+  it("orders later live messages by time and arrival, excluding self, imports, notices and other conversations", () => {
+    const store = new EventStore(":memory:");
+    store.add(event("-999", { time: 1000, human: false, trigger: false }), 1000);
+    for (const next of [
+      event("8", { time: 2000, self: true }),
+      event("7", { time: 2000, human: false, trigger: false }),
+      event("6", { time: 2000, payload: { post_type: "notice" } }),
+      event("5", { time: 2000, conversationKey: "group:2" }),
+      event("4", { time: 2000, accountId: "b" }),
+      event("3", { time: 500 }),
+    ])
+      store.add(next, 2000);
+    expect(store.hasLaterHumanMessage("a", "group:1", "-999")).toBe(false);
+    // Same sender, same timestamp, and a numerically smaller signed ID still counts.
+    store.add(event("-1000", { time: 1000, payload: { post_type: "message" } }), 2000);
+    expect(store.hasLaterHumanMessage("a", "group:1", "-999")).toBe(true);
+    expect(store.hasLaterHumanMessage("a", "group:1", "unknown")).toBe(false);
+    store.close();
+  });
+
+  it("consumes idle only on acceptance without acknowledging pending human input", () => {
+    const store = new EventStore(":memory:");
+    store.add(event("1"), 1000);
+    store.prepareBatch("idle", "a", "group:1", 0, 2000, { trigger: "idle", humanGeneration: 1 });
+    expect(store.state("a", "group:1")!.idleAttemptGeneration).toBe(-1);
+    expect(store.idleBatchCurrent("idle", "a", "group:1")).toBe(true);
+    expect(store.idleBatchCurrent("idle", "b", "group:1")).toBe(false);
+    expect(store.idleBatchCurrent("idle", "a", "group:2")).toBe(false);
+    store.acceptBatch("idle", 2000);
+    expect(store.state("a", "group:1")!.idleAttemptGeneration).toBe(1);
+    expect(store.pending("a", "group:1").count).toBe(1);
+    store.recordBatchOutcome("idle", "sent");
+    store.finishBatch("idle");
+    expect(store.idleBatchCurrent("idle", "a", "group:1")).toBe(false);
+    expect(store.batchRecord("idle")).toEqual({
+      trigger: "idle",
+      status: "completed",
+      outcome: "sent",
+      detail: null,
+    });
+    store.close();
+  });
+
+  it("migrates old batches and preserves accepted idle consumption and diagnostics after restart", () => {
+    const dir = mkdtempSync(join(tmpdir(), "snow-idle-migrate-"));
+    const path = join(dir, "state.db");
+    try {
+      let store = new EventStore(path);
+      store.add(event("1"), 1000);
+      store.prepareBatch("old", "a", "group:1", 1, 1000);
+      store.finishBatch("old");
+      store.close();
+      const db = new DatabaseSync(path);
+      for (const column of ["trigger", "human_generation", "outcome", "detail"])
+        db.exec(`ALTER TABLE batches DROP COLUMN ${column}`);
+      db.exec("ALTER TABLE conversations DROP COLUMN retry_at");
+      db.close();
+      store = new EventStore(path);
+      expect(store.batchRecord("old")).toMatchObject({ trigger: null, outcome: null });
+      store.prepareBatch("accepted", "a", "group:1", 0, 2000, {
+        trigger: "idle",
+        humanGeneration: 1,
+      });
+      store.acceptBatch("accepted", 2000);
+      expect(store.idleBatchCurrent("accepted", "a", "group:1")).toBe(true);
+      store.recordBatchOutcome("accepted", "send_failed", "Provider outcome uncertain");
+      store.close();
+      store = new EventStore(path);
+      store.recover(3000);
+      expect(store.idleBatchCurrent("accepted", "a", "group:1")).toBe(false);
+      expect(store.state("a", "group:1")!.idleAttemptGeneration).toBe(1);
+      expect(store.state("a", "group:1")!.retryAt).toBeNull();
+      expect(store.batchRecord("accepted")).toEqual({
+        trigger: "idle",
+        status: "interrupted",
+        outcome: "send_failed",
+        detail: "Provider outcome uncertain",
+      });
+      store.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("excludes self output before applying the agent limit and truncation count, but retains it for native references", () => {
     const store = new EventStore(":memory:");
     store.add(event("1"), 1000);

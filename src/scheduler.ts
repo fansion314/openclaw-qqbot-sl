@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { EventStore, type StoredEvent, type ConversationState } from "./store.js";
+import {
+  EventStore,
+  type StoredEvent,
+  type ConversationState,
+  type BatchOutcome,
+} from "./store.js";
 import { liveNewCommand } from "./commands.js";
 
 export interface ConversationPolicy {
@@ -24,6 +29,7 @@ export interface DispatchBatch {
   trigger: "message" | "mention" | "idle";
   /** For idle sends, recheck immediately before every visible effect. */
   isCurrent(): boolean;
+  recordOutcome(outcome: BatchOutcome, detail?: string): void;
 }
 
 export interface Clock {
@@ -123,7 +129,10 @@ export class Scheduler {
     this.started = true;
     this.store.recover(this.clock.now());
     for (const state of this.store.states())
-      this.lanes.set(key(state.accountId, state.conversationKey), { state });
+      this.lanes.set(key(state.accountId, state.conversationKey), {
+        state,
+        retryAt: state.retryAt ?? undefined,
+      });
     this.pump();
   }
 
@@ -244,17 +253,14 @@ export class Scheduler {
   private launch(lane: Lane, trigger: DispatchBatch["trigger"]): void {
     const state = lane.state;
     const generation = state.humanGeneration;
-    if (
-      trigger === "idle" &&
-      !this.store.claimIdle(state.accountId, state.conversationKey, generation)
-    )
-      return;
-    const selection = this.store.selectForAgent(
-      state.accountId,
-      state.conversationKey,
-      this.policy(state.exemplar).maxMessages ?? 100,
-      trigger === "idle",
-    );
+    const selection =
+      trigger === "idle"
+        ? { events: [], droppedCount: 0, watermark: 0 }
+        : this.store.selectForAgent(
+            state.accountId,
+            state.conversationKey,
+            this.policy(state.exemplar).maxMessages ?? 100,
+          );
     const command = liveNewCommand(selection.events);
     if (command) {
       selection.events = [command];
@@ -274,6 +280,7 @@ export class Scheduler {
         !this.stopped &&
         (trigger !== "idle" ||
           this.store.state(state.accountId, state.conversationKey)?.humanGeneration === generation),
+      recordOutcome: (outcome, detail) => this.store.recordBatchOutcome(batch.id, outcome, detail),
     };
     this.store.prepareBatch(
       batch.id,
@@ -281,6 +288,7 @@ export class Scheduler {
       state.conversationKey,
       selection.watermark,
       this.clock.now(),
+      { trigger, humanGeneration: generation },
     );
     let accepted = false;
     const accept = () => {
@@ -294,13 +302,30 @@ export class Scheduler {
       .then(async () => {
         try {
           await this.dispatch(batch, { accept });
-          if (!accepted && trigger !== "idle")
+          const current = batch.isCurrent();
+          const cancelled =
+            trigger === "idle" &&
+            (!current || this.store.batchRecord(batch.id)?.outcome === "cancelled");
+          if (cancelled) {
+            if (!this.store.batchRecord(batch.id)?.outcome) batch.recordOutcome("cancelled");
+          } else if (!accepted)
             throw new Error("Agent dispatch completed without accepting its batch");
           this.store.finishBatch(batch.id);
-          lane.retryAt = undefined;
+          // The transport can observe human input before its asynchronous
+          // enrichment reaches SQLite. Wait for that input without treating
+          // intentional cancellation as an admission error or spinning.
+          lane.retryAt = cancelled && current && !accepted ? this.clock.now() + 5_000 : undefined;
+          this.store.setRetryAt(state.accountId, state.conversationKey, lane.retryAt ?? null);
         } catch (error) {
+          if (!this.store.batchRecord(batch.id)?.outcome)
+            batch.recordOutcome(
+              trigger === "idle" && !batch.isCurrent() ? "cancelled" : "generation_failed",
+            );
           this.store.finishBatch(batch.id, true);
-          if (!accepted) lane.retryAt = this.clock.now() + 5_000;
+          if (!accepted) {
+            lane.retryAt = this.clock.now() + 5_000;
+            this.store.setRetryAt(state.accountId, state.conversationKey, lane.retryAt);
+          }
           this.onError(error, batch);
         }
       })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { batchUserProfiles, buildBatchContext } from "../src/prompt.js";
+import { batchUserProfiles, buildBatchContext, IDLE_PROMPT } from "../src/prompt.js";
 
 const message = (id: string, userId = "10001", extra: Record<string, unknown> = {}) => ({
   id,
@@ -95,13 +95,26 @@ describe("readable incremental input", () => {
     );
     expect(result.startsWith("````xml\n")).toBe(true);
   });
-  it("omits empty sections and keeps the footer minimal", () => {
+  it("provides only the idle task prompt without cached records, profiles or extra guidance", () => {
     const result = buildBatchContext(
       { trigger: "idle", droppedCount: 0, events: [message("1")] },
       "10002",
+      "cached conversation guidance",
+      {
+        userLabel: () => {
+          throw new Error("must not inspect historical users");
+        },
+      },
     );
-    expect(result).not.toContain("<current>");
-    expect(result).toContain("仅适合时简短开场。");
+    expect(result).toBe(IDLE_PROMPT);
+    expect(result).not.toContain("message 1");
+    expect(result).not.toContain("cached conversation guidance");
+    expect(result).not.toContain("<qq-context");
+    expect(
+      batchUserProfiles({ trigger: "idle", droppedCount: 0, events: [message("1")] }, "10002"),
+    ).toEqual(new Map());
+  });
+  it("omits empty sections and keeps the normal footer minimal", () => {
     const current = buildBatchContext(
       { trigger: "message", droppedCount: 0, events: [message("2")] },
       "10002",

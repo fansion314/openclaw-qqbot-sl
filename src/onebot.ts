@@ -54,6 +54,37 @@ export interface UploadOptions {
   roots?: readonly string[];
 }
 
+/** No platform I/O occurred because the originating conversation changed. */
+export class SendCancelledError extends Error {
+  constructor(message = "Send cancelled because the conversation changed") {
+    super(message);
+    this.name = "SendCancelledError";
+  }
+}
+
+export interface SendGuardOptions {
+  assertCurrent?: () => void;
+}
+
+export interface MessageSendOptions extends SendGuardOptions {
+  signal?: AbortSignal;
+  /** Resolve conditional reply segments after pacing, immediately before native I/O. */
+  prepare?: (segments: OneBotSegment[]) => OneBotSegment[] | Promise<OneBotSegment[]>;
+}
+
+function validateSend(target: OneBotTarget, segments: OneBotSegment[]): void {
+  if (!segments.length) throw new Error("Cannot send an empty message");
+  const allowed = new Set(["text", "at", "reply", "face", "image", "record", "video"]);
+  if (segments.some((segment) => !allowed.has(segment.type)))
+    throw new Error("Unsupported outbound segment");
+  if (target.kind === "private" && segments.some((segment) => segment.type === "at"))
+    throw new Error("Private messages do not support @ segments");
+  for (const segment of segments) {
+    if (segment.type === "reply") messageId(String(segment.data.id));
+    if (segment.type === "at") positiveId(String(segment.data.qq));
+  }
+}
+
 function positiveId(value: string): number {
   if (!/^\d+$/.test(value)) throw new Error("Invalid QQ identifier");
   const id = Number(value);
@@ -267,37 +298,41 @@ export class OneBotTransport {
   send(
     target: OneBotTarget,
     segments: OneBotSegment[],
-    options: { signal?: AbortSignal } = {},
+    options: MessageSendOptions = {},
   ): Promise<{ message_id: number }> {
-    if (!segments.length) return Promise.reject(new Error("Cannot send an empty message"));
-    const allowed = new Set(["text", "at", "reply", "face", "image", "record", "video"]);
-    if (segments.some((segment) => !allowed.has(segment.type)))
-      return Promise.reject(new Error("Unsupported outbound segment"));
-    if (target.kind === "private" && segments.some((segment) => segment.type === "at"))
-      return Promise.reject(new Error("Private messages do not support @ segments"));
-    for (const segment of segments) {
-      if (segment.type === "reply") messageId(String(segment.data.id));
-      if (segment.type === "at") positiveId(String(segment.data.qq));
+    try {
+      validateSend(target, segments);
+    } catch (error) {
+      return Promise.reject(error);
     }
     return this.sendQueue.enqueue(
       segments
         .filter((p) => p.type === "text")
         .map((p) => String(p.data.text ?? ""))
         .join(""),
-      () =>
-        this.operation(() =>
+      async () => {
+        options.assertCurrent?.();
+        const prepared = options.prepare ? await options.prepare(segments) : segments;
+        validateSend(target, prepared);
+        if (options.signal?.aborted)
+          throw new DOMException("Send cancelled before platform dispatch", "AbortError");
+        options.assertCurrent?.();
+        return this.operation(() =>
           target.kind === "group"
-            ? this.client.sendGroupMessage(positiveId(target.id), segments, options)
+            ? this.client.sendGroupMessage(positiveId(target.id), prepared, {
+                signal: options.signal,
+              })
             : this.client.raw(
                 "send_private_msg",
                 {
                   user_id: positiveId(target.id),
-                  message: segments,
+                  message: prepared,
                   ...(target.groupId ? { group_id: positiveId(target.groupId) } : {}),
                 },
-                options,
+                { signal: options.signal },
               ),
-        ),
+        );
+      },
       options.signal,
     );
   }
@@ -384,28 +419,31 @@ export class OneBotTransport {
     target: OneBotTarget,
     serverPath: string,
     name?: string,
-    options: { signal?: AbortSignal } = {},
+    options: { signal?: AbortSignal } & SendGuardOptions = {},
   ): Promise<{ file_id?: string }> {
     return this.sendQueue.enqueue(
       "",
-      () =>
-        this.operation(async () => {
+      () => {
+        options.assertCurrent?.();
+        return this.operation(async () => {
           const result =
             target.kind === "group"
               ? await this.client.uploadGroupFile(positiveId(target.id), serverPath, {
-                  ...options,
+                  signal: options.signal,
                   name,
                 })
               : await this.client.uploadPrivateFile(positiveId(target.id), serverPath, {
-                  ...options,
+                  signal: options.signal,
                   name,
                 });
           return result as { file_id?: string };
-        }),
+        });
+      },
       options.signal,
     );
   }
-  async poke(target: OneBotTarget, userId: string): Promise<void> {
+  async poke(target: OneBotTarget, userId: string, options: SendGuardOptions = {}): Promise<void> {
+    options.assertCurrent?.();
     await this.operation(() =>
       target.kind === "group"
         ? this.client.raw("group_poke", {
@@ -418,8 +456,14 @@ export class OneBotTransport {
           }),
     );
   }
-  async reaction(id: string | number, emojiId: string, set = true): Promise<void> {
+  async reaction(
+    id: string | number,
+    emojiId: string,
+    set = true,
+    options: SendGuardOptions = {},
+  ): Promise<void> {
     if (!emojiId.trim()) throw new Error("Emoji identifier is required");
+    options.assertCurrent?.();
     await this.operation(() =>
       this.client.raw("set_msg_emoji_like", { message_id: messageId(id), emoji_id: emojiId, set }),
     );

@@ -37,6 +37,58 @@ describe("structured streaming", () => {
       });
     }
   });
+  it("preserves a soft reply target and explicit mention across every stream split", async () => {
+    const value =
+      '<msg soft_reply_to="-2147483648" at="小林">这家<image ref="m1"/></msg><msg>下次吃一下</msg>';
+    for (let i = 0; i <= value.length; i++) {
+      const sent: ReplyAction[] = [];
+      const stream = new StructuredReplyStream(async (action) => {
+        sent.push(action);
+      });
+      await stream.update({ text: value.slice(0, i) });
+      await stream.finish(value);
+      expect(sent).toEqual([
+        {
+          type: "message",
+          softReplyTo: "-2147483648",
+          at: "小林",
+          parts: [
+            { type: "text", text: "这家" },
+            { type: "image", ref: "m1" },
+          ],
+        },
+        { type: "message", parts: [{ type: "text", text: "下次吃一下" }] },
+      ]);
+    }
+  });
+  it.each(["1", "2147483647", "-1", "-2147483648"])(
+    "accepts signed soft reply ID %s without an implicit mention",
+    async (id) => {
+      const sent: ReplyAction[] = [];
+      const stream = new StructuredReplyStream(async (action) => {
+        sent.push(action);
+      });
+      await stream.finish(`<msg soft_reply_to="${id}">好</msg>`);
+      expect(sent).toEqual([
+        { type: "message", softReplyTo: id, parts: [{ type: "text", text: "好" }] },
+      ]);
+    },
+  );
+  it.each([
+    '<msg reply_to="1" soft_reply_to="1">好</msg>',
+    '<msg soft_reply_to="1" reply_to="-1">好</msg>',
+    '<msg soft_reply_to="1" soft_reply_to="2">好</msg>',
+    ...["", "0", "-0", "2147483648", "-2147483649", "1.5", "1e2", " 1", "no-id"].map(
+      (id) => `<msg soft_reply_to="${id}">好</msg>`,
+    ),
+  ])("rejects invalid soft reply attributes before effects: %s", async (text) => {
+    const sent: ReplyAction[] = [];
+    const stream = new StructuredReplyStream(async (action) => {
+      sent.push(action);
+    });
+    await expect(stream.finish(text)).rejects.toThrow();
+    expect(sent).toHaveLength(0);
+  });
   it("keeps intentionally identical messages at separate assistant boundaries", async () => {
     const identities: unknown[] = [];
     const stream = new StructuredReplyStream(async (_, id) => {

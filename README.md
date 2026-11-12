@@ -15,7 +15,7 @@ pnpm install --frozen-lockfile --ignore-scripts
 pnpm check
 pnpm pack
 # 在运行 OpenClaw 的主机安装生成的包：
-openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.6.tgz
+openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.7.tgz
 ```
 
 本地开发可在构建后使用 `openclaw plugins install --link .`。安装包包含已编译 JavaScript，不依赖主机即时编译 TypeScript。
@@ -32,7 +32,7 @@ Docker 内监听地址和主机可访问地址可能不同：OpenClaw 在主机�
 
 一轮默认最多100条，超限优先保留待处理@及最新消息，并向模型说明截断数量。SQLite 缓存默认500条/会话、7天；不是 QQ 无限历史备份。历史补取可能受 SnowLuma 锚点及 QQ 服务端限制。
 
-自主模式群聊默认安静1小时后给 agent 一次开场机会。无论发言或沉默，本轮不再反复开场，直到真人新消息重置。可用 `activeHours` 和 `timeZone` 限定时段。私聊、mention模式群默认不开启。
+自主模式群聊默认安静1小时后要求 agent 用一条简短消息主动开启话题。此次仅提供开场任务 prompt，不追加聊天缓存、用户表、文件或任何附件；沿用 agent 自身人格和会话。每段安静期最多一次，真人新消息会取消过时开场并重新计时。宿主接纳前且确认未发送的调用失败可重试；已接纳或发送结果不确定时不自动重放。可用 `activeHours` 和 `timeZone` 限定时段。私聊、mention模式群默认不开启。
 
 工具权限沿用 OpenClaw。请使用现有 agent 绑定和工具策略管理宿主机能力；此插件不会将历史正文作为独立的管理命令。不同QQ会话默认独立路由。
 
@@ -62,7 +62,7 @@ Docker 内监听地址和主机可访问地址可能不同：OpenClaw 在主机�
 
 ## 协议与行为
 
-参见 [结构化协议](docs/protocol.md)、[聊天风格](docs/chat-style.md) 和 [验证及部署](docs/validation.md)。完整 `<msg>` 生成后进入账号发送队列；首条立即发送，后续按字数停顿1—10秒。原生发送工具已发送的内容不再次输出。发送回执证明 OneBot 接受请求，不代表接收方设备已展示或已读。
+参见 [结构化协议](docs/protocol.md)、[聊天风格](docs/chat-style.md) 和 [验证及部署](docs/validation.md)。普通群聊首条回复使用 `soft_reply_to` 标明目标，发送时若目标之后已有其他成员消息则显示引用，否则普通发送；引用不会自动@。完整 `<msg>` 生成后进入账号发送队列；首条立即发送，后续按字数停顿1—10秒。原生发送工具已发送的内容不再次输出。发送回执证明 OneBot 接受请求，不代表接收方设备已展示或已读。
 
 媒体识别使用 OpenClaw 已配置的模型和媒体理解能力。没有相应能力时保留类型占位。插件主机文件会先上传到 SnowLuma，再发送服务端资源，适用于两端不共享文件系统的部署。
 
@@ -80,7 +80,7 @@ pnpm build
 
 用户定义按实际OpenClaw sessionId持久化，同一session只在首次出现或昵称/群名片变化时补充。只有宿主确认运行接纳后才记录；新session和会话重置会重新提供。自身消息通过发送者QQ号或message_sent识别，仅缓存用于引用、去重和计时，不重复递交给agent。
 
-WebUI以XML代码块保留换行，每条msg的标签和正文分行。`history`包含补取历史，以及@触发时积累的普通消息；`current`包含本次触发的新消息，@触发时明确列出被@消息。主动开场只有history，没有伪造的人类新消息。
+WebUI以XML代码块保留换行，每条msg的标签和正文分行。`history`包含补取历史，以及@触发时积累的普通消息；`current`包含本次触发的新消息，@触发时明确列出被@消息。主动开场仅有任务 prompt，不组装history/current或用户定义，也不追加任何历史附件。
 
 ## 节奏与短图链（0.1.2）
 

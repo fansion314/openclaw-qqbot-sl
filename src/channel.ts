@@ -31,6 +31,7 @@ import {
 } from "./config.js";
 import {
   OneBotTransport,
+  SendCancelledError,
   type OneBotEvent,
   type OneBotSegment,
   type OneBotTarget,
@@ -72,9 +73,20 @@ interface RunningAccount {
   scheduler: Scheduler;
   selfId: string;
   stop: () => Promise<void>;
+  observed: Map<string, { id: string; time: number; order: number }[]>;
+  pendingHumans: Map<string, Set<string>>;
 }
 const running = new Map<string, RunningAccount>();
-const toolRoutes = new Map<string, { accountId: string; target: OneBotTarget }>();
+const toolRoutes = new Map<
+  string,
+  {
+    accountId: string;
+    target: OneBotTarget;
+    assertCurrent?: () => void;
+    beforeEffect?: () => void;
+    onEffect?: (kind: string) => void;
+  }
+>();
 function live(accountId?: string | null): RunningAccount {
   const found = running.get(accountId || "default");
   if (!found) throw new Error("SnowLuma account is not running");
@@ -223,7 +235,7 @@ function serialize(action: ReplyAction): string {
   if (action.type === "poke") return `<poke user_id="${escape(action.userId)}"/>`;
   if (action.type === "reaction")
     return `<reaction msg_id="${escape(action.messageId)}" emoji_id="${escape(action.emojiId)}" set="${action.set}"/>`;
-  return `<msg${action.replyTo ? ` reply_to="${escape(action.replyTo)}"` : ""}${action.at ? ` at="${escape(action.at)}"` : ""}>${action.parts.map((p) => (p.type === "text" ? escape(p.text) : p.type === "face" ? `<face id="${escape(p.id)}"/>` : `<${p.type}${p.ref ? ` ref="${escape(p.ref)}"` : ""}${p.src ? ` src="${escape(p.src)}"` : ""}${p.name ? ` name="${escape(p.name)}"` : ""}/>`)).join("")}</msg>`;
+  return `<msg${action.replyTo ? ` reply_to="${escape(action.replyTo)}"` : ""}${action.softReplyTo ? ` soft_reply_to="${escape(action.softReplyTo)}"` : ""}${action.at ? ` at="${escape(action.at)}"` : ""}>${action.parts.map((p) => (p.type === "text" ? escape(p.text) : p.type === "face" ? `<face id="${escape(p.id)}"/>` : `<${p.type}${p.ref ? ` ref="${escape(p.ref)}"` : ""}${p.src ? ` src="${escape(p.src)}"` : ""}${p.name ? ` name="${escape(p.name)}"` : ""}/>`)).join("")}</msg>`;
 }
 function isAllowed(cfg: OpenClawConfig, accountId: string, t: OneBotTarget): ResolvedAccount {
   assertRionConfigured(cfg);
@@ -239,10 +251,23 @@ async function nativeAction(
   action: ReplyAction,
   signal?: AbortSignal,
   mediaAuthorization: MediaAuthorization = {},
+  guard: {
+    assertCurrent?: () => void;
+    beforeEffect?: () => void;
+    onEffect?: (kind: string) => void;
+  } = {},
 ): Promise<string> {
   const account = isAllowed(cfg, accountId, t);
   const state = live(accountId);
   const bot = state.transport;
+  const assertCurrent = () => {
+    guard.assertCurrent?.();
+  };
+  const beforeEffect = () => {
+    assertCurrent();
+    guard.beforeEffect?.();
+  };
+  assertCurrent();
   const acceptedEffect = (kind: string, result: unknown) =>
     state.store.saveReceipt(`native:${randomUUID()}`, accountId, keyFor(accountId, t), {
       kind,
@@ -278,22 +303,27 @@ async function nativeAction(
       throw new Error("Message is not known in this conversation");
   }
   if (action.type === "poke") {
-    await bot.poke(t, user(action.userId));
+    beforeEffect();
+    await bot.poke(t, user(action.userId), { assertCurrent });
+    guard.onEffect?.("poke");
     acceptedEffect("poke", null);
     return "";
   }
   if (action.type === "reaction") {
     message(action.messageId);
-    await bot.reaction(action.messageId, action.emojiId, action.set);
+    beforeEffect();
+    await bot.reaction(action.messageId, action.emojiId, action.set, { assertCurrent });
+    guard.onEffect?.("reaction");
     acceptedEffect("reaction", null);
     return "";
   }
   if (
     action.parts.some((part) => part.type === "file") &&
-    (action.parts.length !== 1 || action.at || action.replyTo)
+    (action.parts.length !== 1 || action.at || action.replyTo || action.softReplyTo)
   )
     throw new Error("A file must occupy a standalone msg without reply or at");
-  const parts: OneBotSegment[] = [];
+  if (action.softReplyTo) message(action.softReplyTo);
+  let parts: OneBotSegment[] = [];
   if (action.replyTo) {
     message(action.replyTo);
     parts.push({ type: "reply", data: { id: action.replyTo } });
@@ -319,7 +349,12 @@ async function nativeAction(
           { signal, maxBytes: account.settings.mediaMaxBytes ?? 50 * 1024 * 1024 },
         );
         if (p.type === "file") {
-          const result = await bot.sendFile(t, uploaded, p.name ?? resource.name, { signal });
+          beforeEffect();
+          const result = await bot.sendFile(t, uploaded, p.name ?? resource.name, {
+            signal,
+            assertCurrent,
+          });
+          guard.onEffect?.("file");
           acceptedEffect("file", result);
           return "";
         }
@@ -344,14 +379,42 @@ async function nativeAction(
       });
       if (p.type === "file") {
         if (parts.length) throw new Error("File must be sent in a separate msg");
-        const result = await bot.sendFile(t, file, p.name, { signal });
+        beforeEffect();
+        const result = await bot.sendFile(t, file, p.name, { signal, assertCurrent });
+        guard.onEffect?.("file");
         acceptedEffect("file", result);
         return "";
       }
       parts.push({ type: p.type, data: { file } });
     }
   }
-  const result = await bot.send(t, parts, { signal });
+  beforeEffect();
+  const result = await bot.send(t, parts, {
+    signal,
+    assertCurrent,
+    prepare: (prepared) => {
+      if (!action.softReplyTo || t.kind !== "group") return prepared;
+      // Check again after pacing/upload: another member may have spoken meanwhile.
+      const key = keyFor(accountId, t);
+      const targetEvent = known.find((event) => event.id === action.softReplyTo);
+      const observations = state.observed.get(key) ?? [];
+      const observedTarget = observations.find((event) => event.id === action.softReplyTo);
+      const laterObserved = observations.some(
+        (event) =>
+          event.id !== action.softReplyTo &&
+          (event.time > (targetEvent?.time ?? observedTarget?.time ?? Infinity) ||
+            (event.time === (targetEvent?.time ?? observedTarget?.time) &&
+              event.order > (observedTarget?.order ?? -1))),
+      );
+      const later =
+        !targetEvent ||
+        laterObserved ||
+        state.store.hasLaterHumanMessage(accountId, key, action.softReplyTo);
+      parts = later ? [{ type: "reply", data: { id: action.softReplyTo } }, ...prepared] : prepared;
+      return parts;
+    },
+  });
+  guard.onEffect?.("message");
   const id = String(result.message_id);
   state.scheduler.ingest({
     id,
@@ -380,15 +443,57 @@ async function sendStructured(
   text: string,
   signal?: AbortSignal,
   mediaAuthorization: MediaAuthorization = {},
+  guard: {
+    assertCurrent?: () => void;
+    beforeEffect?: () => void;
+    onEffect?: (kind: string) => void;
+  } = {},
 ): Promise<string> {
   let result = "";
   const stream = new StructuredReplyStream(async (action) => {
-    const sent = await nativeAction(cfg, accountId, target(to), action, signal, mediaAuthorization);
+    const sent = await nativeAction(
+      cfg,
+      accountId,
+      target(to),
+      action,
+      signal,
+      mediaAuthorization,
+      guard,
+    );
     if (sent) result = sent;
   });
   await stream.update({ text });
   await stream.finish();
   return result;
+}
+function outboundGuard(
+  accountId: string,
+  to: string,
+  sessionKey?: string | null,
+  idleBatchId?: string,
+) {
+  const route = sessionKey ? toolRoutes.get(sessionKey) : undefined;
+  const t = target(to);
+  const scoped =
+    route?.accountId === accountId && keyFor(accountId, route.target) === keyFor(accountId, t)
+      ? route
+      : undefined;
+  return {
+    assertCurrent: () => {
+      scoped?.assertCurrent?.();
+      if (idleBatchId) {
+        const state = live(accountId);
+        const key = keyFor(accountId, t);
+        if (
+          !state.store.idleBatchCurrent(idleBatchId, accountId, key) ||
+          state.pendingHumans.get(key)?.size
+        )
+          throw new SendCancelledError("Idle opening was superseded");
+      }
+    },
+    beforeEffect: scoped?.beforeEffect,
+    onEffect: scoped?.onEffect,
+  };
 }
 const outbound: NonNullable<ChannelPlugin<ResolvedAccount>["outbound"]> = {
   deliveryMode: "direct",
@@ -402,12 +507,68 @@ const outbound: NonNullable<ChannelPlugin<ResolvedAccount>["outbound"]> = {
         resolveAccount(context.cfg, context.accountId).accountId,
         context.to,
         context.text,
-        undefined,
+        context.signal,
         {
           mediaAccess: context.mediaAccess,
           mediaLocalRoots: context.mediaLocalRoots,
           mediaReadFile: context.mediaReadFile,
         },
+        outboundGuard(
+          resolveAccount(context.cfg, context.accountId).accountId,
+          context.to,
+          context.sessionKey,
+        ),
+      ),
+    };
+  },
+  sendPayload: async (context) => {
+    assertRionOrigin({ sessionKey: context.sessionKey });
+    const accountId = resolveAccount(context.cfg, context.accountId).accountId;
+    const metadata = context.payload.channelData?.[CHANNEL_ID] as
+      | { idleBatchId?: unknown }
+      | undefined;
+    if (metadata?.idleBatchId !== undefined && typeof metadata.idleBatchId !== "string")
+      throw new Error("Invalid idle delivery identity");
+    const guard = outboundGuard(
+      accountId,
+      context.to,
+      context.sessionKey,
+      metadata?.idleBatchId as string | undefined,
+    );
+    guard.assertCurrent();
+    const media = context.payload.mediaUrls?.length
+      ? context.payload.mediaUrls
+      : context.payload.mediaUrl
+        ? [context.payload.mediaUrl]
+        : [];
+    if (media.length) {
+      // Idle openings are text-only; never replay a historical media payload as an opening.
+      if (metadata?.idleBatchId) throw new Error("Idle opening cannot attach media");
+      let result;
+      for (const [index, mediaUrl] of media.entries()) {
+        result = await outbound.sendMedia!({
+          ...context,
+          mediaUrl,
+          text: index === 0 ? (context.payload.text ?? "") : "",
+        });
+        await context.onDeliveryResult?.(result);
+      }
+      return result!;
+    }
+    return {
+      channel: CHANNEL_ID,
+      messageId: await sendStructured(
+        context.cfg,
+        accountId,
+        context.to,
+        context.payload.text ?? "",
+        context.signal,
+        {
+          mediaAccess: context.mediaAccess,
+          mediaLocalRoots: context.mediaLocalRoots,
+          mediaReadFile: context.mediaReadFile,
+        },
+        guard,
       ),
     };
   },
@@ -421,6 +582,7 @@ const outbound: NonNullable<ChannelPlugin<ResolvedAccount>["outbound"]> = {
     mediaLocalRoots,
     mediaReadFile,
     sessionKey,
+    signal,
   }) => {
     assertRionOrigin({ sessionKey });
     const id = resolveAccount(cfg, accountId).accountId;
@@ -446,8 +608,9 @@ const outbound: NonNullable<ChannelPlugin<ResolvedAccount>["outbound"]> = {
             { type: kind, src: mediaUrl ?? "" },
           ],
         },
-        undefined,
+        signal,
         { mediaAccess, mediaLocalRoots, mediaReadFile },
+        outboundGuard(id, to, sessionKey),
       ),
     };
   },
@@ -622,11 +785,16 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
         ).events;
         if (!known.some((e) => e.id === id))
           throw new Error("Reaction message is outside current known conversation");
+        const guard = outboundGuard(accountId, toFor(t), ctx.sessionKey);
+        guard.beforeEffect?.();
+        guard.assertCurrent();
         await live(accountId).transport.reaction(
           id,
           String(ctx.params.emoji ?? ctx.params.emoji_id ?? ""),
           ctx.params.remove !== true,
+          { assertCurrent: guard.assertCurrent },
         );
+        guard.onEffect?.("reaction");
         return {
           content: [{ type: "text", text: "Reaction accepted" }],
           details: { messageId: id },
@@ -763,6 +931,9 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
       let historyGap = "";
       let stopped = false;
       let ingestion = Promise.resolve();
+      const observed: RunningAccount["observed"] = new Map();
+      const pendingHumans: RunningAccount["pendingHumans"] = new Map();
+      let observationOrder = 0;
       let backfillWork = Promise.resolve();
       let imageService: Awaited<ReturnType<typeof acquireImageLinks>> | undefined;
       const scheduler = new Scheduler({
@@ -779,6 +950,19 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
         onError: (error) => ctx.log?.error(String(error)),
         dispatch: async (batch, control) => {
           if (stopped) return;
+          const assertCurrent = () => {
+            if (
+              batch.trigger === "idle" &&
+              (!batch.isCurrent() || pendingHumans.get(batch.conversationKey)?.size)
+            )
+              throw new SendCancelledError("Idle opening was superseded by a new message");
+          };
+          try {
+            assertCurrent();
+          } catch {
+            batch.recordOutcome("cancelled");
+            return;
+          }
           const cfg: OpenClawConfig = JSON.parse(JSON.stringify(rt.config.current()));
           const t = targetFor(batch.conversationKey);
           const current = isAllowed(cfg, account.accountId, t);
@@ -954,21 +1138,41 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
                   },
                 );
           if (ingress?.ingress.decision === "block") return;
-          const currentImages = await prepareInboundImages(
+          const currentImages =
             batch.trigger === "idle"
               ? []
-              : batch.events.filter((event) => batch.trigger !== "mention" || event.mention),
-            bot,
-            {
-              signal: ctx.abortSignal,
-              maxBytes: Math.min(
-                current.settings.mediaMaxBytes ?? 20 * 1024 * 1024,
-                20 * 1024 * 1024,
-              ),
-              onError: ({ ref, reason }) => ctx.log?.warn(`QQ image attachment ${ref}: ${reason}`),
+              : await prepareInboundImages(
+                  batch.events.filter((event) => batch.trigger !== "mention" || event.mention),
+                  bot,
+                  {
+                    signal: ctx.abortSignal,
+                    maxBytes: Math.min(
+                      current.settings.mediaMaxBytes ?? 20 * 1024 * 1024,
+                      20 * 1024 * 1024,
+                    ),
+                    onError: ({ ref, reason }) =>
+                      ctx.log?.warn(`QQ image attachment ${ref}: ${reason}`),
+                  },
+                );
+          let effectAttempted = false;
+          let visibleEffects = 0;
+          let firstMessage = true;
+          const deliveryRoute = {
+            accountId: account.accountId,
+            target: t,
+            assertCurrent,
+            beforeEffect: () => {
+              assertCurrent();
+              control.accept();
+              effectAttempted = true;
             },
-          );
-          toolRoutes.set(sessionKey, { accountId: account.accountId, target: t });
+            onEffect: (kind: string) => {
+              if (kind === "message" || kind === "file") firstMessage = false;
+              visibleEffects++;
+              batch.recordOutcome("sent");
+            },
+          };
+          toolRoutes.set(sessionKey, deliveryRoute);
           const context = rt.channel.inbound.buildContext({
             channel: CHANNEL_ID,
             accountId: account.accountId,
@@ -993,7 +1197,7 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
             messageId: batch.id,
             media: [
               ...currentImages.filter((image) => !!image.path),
-              ...batch.events
+              ...(batch.trigger === "idle" ? [] : batch.events)
                 .filter((event) => !event.self && event.userId !== selfId)
                 .flatMap((event) =>
                   (event.media ?? [])
@@ -1028,54 +1232,168 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
           });
           let protocolFailure: unknown;
           let terminalFailure = false;
+          let correctionUsed = false;
+          type PendingAction = { action: ReplyAction; effectId: string };
+          const held: PendingAction[] = [];
+          const sendAction = async ({ action, effectId }: PendingAction) => {
+            assertCurrent();
+            const previous = store.receipt(effectId) as { status?: string } | undefined;
+            if (previous?.status === "sent" || previous?.status === "suppressed") return;
+            if (previous) throw new Error("Previous send outcome requires reconciliation");
+            // Persist acceptance before crossing the durable delivery boundary.
+            control.accept();
+            effectAttempted = true;
+            store.saveReceipt(effectId, account.accountId, batch.conversationKey, {
+              status: "sending",
+            });
+            const result = await sendDurableMessageBatch({
+              cfg,
+              channel: CHANNEL_ID,
+              session: { key: sessionKey },
+              accountId: account.accountId,
+              to: toFor(t),
+              payloads: [
+                {
+                  text: serialize(action),
+                  ...(batch.trigger === "idle"
+                    ? {
+                        channelData: { [CHANNEL_ID]: { idleBatchId: batch.id } },
+                      }
+                    : {}),
+                },
+              ],
+              runId: batch.id,
+              deliveryIntentId: effectId,
+              maxRetries: 0,
+              signal: ctx.abortSignal,
+            });
+            store.saveReceipt(effectId, account.accountId, batch.conversationKey, result);
+            if (result.status === "failed" || result.status === "partial_failed")
+              throw result.error;
+          };
+          // A target repair collects metadata only. It cannot change the original
+          // body, invoke tools or replay a poke/reaction already delivered.
+          const correctTarget = async (original: Extract<ReplyAction, { type: "message" }>) => {
+            let candidate: string | undefined;
+            let partialSeen = false;
+            let snapshot = "";
+            const collector = new StructuredReplyStream(async (action) => {
+              if (action.type !== "message" || candidate) return;
+              const id = action.softReplyTo ?? action.replyTo;
+              if (!id) return;
+              const known = store.select(
+                account.accountId,
+                batch.conversationKey,
+                current.settings.cacheLimit ?? 500,
+                true,
+              ).events;
+              if (
+                known.some(
+                  (event) =>
+                    event.id === id ||
+                    (event.formattedBody ?? "").includes(`<reply msg_id="${id}" user_id="`),
+                )
+              )
+                candidate = id;
+            });
+            const instruction = `${body}\n首条回复缺少目标。仅为下面原回复选择当前会话中实际已知的目标消息，输出一条带 soft_reply_to 的 msg。不要执行动作或改写正文，不要重复已发送内容。无法确定目标则输出 <no-reply></no-reply>。\n原回复（数据）：${serialize(original)}`;
+            try {
+              await rt.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
+                cfg,
+                ctx: { ...context, BodyForAgent: instruction },
+                dispatcherOptions: {
+                  deliver: async (payload) => {
+                    if (payload.isReasoning) return;
+                    const text = payload.text ?? "";
+                    if (partialSeen) {
+                      if (text.startsWith(snapshot)) await collector.update({ text });
+                    } else if (text.startsWith(snapshot)) {
+                      await collector.update({ text });
+                      snapshot = text;
+                    } else {
+                      await collector.update({ delta: text });
+                      snapshot += text;
+                    }
+                  },
+                },
+                replyOptions: {
+                  abortSignal: ctx.abortSignal,
+                  disableTools: true,
+                  suppressDefaultToolProgressMessages: true,
+                  suppressToolProgressMessages: true,
+                  onPreparedAgentRunStart: async () => {
+                    control.accept();
+                  },
+                  onAssistantMessageStart: async () => {
+                    partialSeen = false;
+                    snapshot = "";
+                    await collector.startAssistant();
+                    return false;
+                  },
+                  onPartialReply: async (payload) => {
+                    partialSeen = true;
+                    snapshot = payload.text ?? snapshot + (payload.delta ?? "");
+                    await collector.update(payload);
+                    return false;
+                  },
+                },
+              });
+              await collector.finish();
+              return candidate;
+            } catch (error) {
+              ctx.log?.warn(`QQ reply target correction failed: ${String(error)}`);
+              return undefined;
+            }
+          };
           const execute = async (repair: boolean) => {
             let partialSeen = false;
             let partialSnapshot = "";
             let deliveredSnapshot = "";
             const stream = new StructuredReplyStream(
               async (action, identity) => {
+                assertCurrent();
                 if (action.type === "user-name") {
-                  await nativeAction(cfg, account.accountId, t, action, ctx.abortSignal);
+                  await nativeAction(
+                    cfg,
+                    account.accountId,
+                    t,
+                    action,
+                    ctx.abortSignal,
+                    {},
+                    deliveryRoute,
+                  );
                   return;
                 }
-                if (action.type === "no-reply" || (batch.trigger === "idle" && !batch.isCurrent()))
+                if (action.type === "no-reply") return;
+                const item = {
+                  action,
+                  effectId: `${batch.id}:${repair ? "repair:" : ""}${identity.assistantIndex}:${identity.blockIndex}`,
+                };
+                const needsTarget =
+                  action.type === "message" &&
+                  firstMessage &&
+                  t.kind === "group" &&
+                  batch.trigger !== "idle" &&
+                  !action.parts.some((part) => part.type === "file");
+                if (action.type === "message") firstMessage = false;
+                if (held.length || (needsTarget && !action.replyTo && !action.softReplyTo)) {
+                  held.push(item);
                   return;
-                const effectId = `${batch.id}:${repair ? "repair:" : ""}${identity.assistantIndex}:${identity.blockIndex}`;
-                const previous = store.receipt(effectId) as { status?: string } | undefined;
-                if (previous?.status === "sent" || previous?.status === "suppressed") return;
-                if (previous) throw new Error("Previous send outcome requires reconciliation");
-                store.saveReceipt(effectId, account.accountId, batch.conversationKey, {
-                  status: "sending",
-                });
-                const result = await sendDurableMessageBatch({
-                  cfg,
-                  channel: CHANNEL_ID,
-                  session: { key: sessionKey },
-                  accountId: account.accountId,
-                  to: toFor(t),
-                  payloads: [{ text: serialize(action) }],
-                  runId: `${batch.id}${repair ? ":repair" : ""}`,
-                  deliveryIntentId: `${batch.id}:${repair ? "repair:" : ""}${identity.assistantIndex}:${identity.blockIndex}`,
-                  maxRetries: 0,
-                  signal: ctx.abortSignal,
-                });
-                store.saveReceipt(effectId, account.accountId, batch.conversationKey, result);
-                if (result.status === "failed" || result.status === "partial_failed")
-                  throw result.error;
+                }
+                await sendAction(item);
               },
               {
                 maxActions: current.settings.maxOutputMessages ?? 10,
                 maxMessageChars: current.settings.maxOutputChars ?? 5000,
               },
             );
+            const repairInstruction =
+              batch.trigger === "idle"
+                ? `${body}\n上次未成功生成开场。现在请输出一条简短的 <msg>话题</msg>，不要沉默，不要调用工具。`
+                : `${body}\n上次没有生成可解析的回复。请只输出合法结构，或 <no-reply></no-reply>。`;
             await rt.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
               cfg,
-              ctx: repair
-                ? {
-                    ...context,
-                    BodyForAgent: `${body}\n上次没有生成可解析的回复。请只输出合法结构，或 <no-reply></no-reply>。`,
-                  }
-                : context,
+              ctx: repair ? { ...context, BodyForAgent: repairInstruction } : context,
               dispatcherOptions: {
                 deliver: async (payload) => {
                   if (payload.isReasoning) return;
@@ -1083,14 +1401,12 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
                     const text = payload.text ?? "";
                     if (partialSeen) {
                       if (text.startsWith(partialSnapshot)) await stream.update({ text });
+                    } else if (text.startsWith(deliveredSnapshot)) {
+                      await stream.update({ text });
+                      deliveredSnapshot = text;
                     } else {
-                      if (text.startsWith(deliveredSnapshot)) {
-                        await stream.update({ text });
-                        deliveredSnapshot = text;
-                      } else {
-                        await stream.update({ delta: text });
-                        deliveredSnapshot += text;
-                      }
+                      await stream.update({ delta: text });
+                      deliveredSnapshot += text;
                     }
                   } catch (e) {
                     protocolFailure = e;
@@ -1099,12 +1415,14 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
               },
               replyOptions: {
                 abortSignal: ctx.abortSignal,
+                ...(repair ? { disableTools: true } : {}),
                 suppressDefaultToolProgressMessages: true,
                 suppressToolProgressMessages: true,
                 onPreparedAgentRunStart: async (start) => {
+                  assertCurrent();
                   control.accept();
                   const actualSessionId = start?.transcriptStart?.sessionId;
-                  if (actualSessionId) {
+                  if (actualSessionId && profiles.size) {
                     const actualEntry = await rt.agent?.session?.getSessionEntryAsync({
                       agentId: TARGET_AGENT_ID,
                       sessionKey,
@@ -1149,31 +1467,81 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
             } catch (e) {
               protocolFailure = e;
             }
-            return stream.visibleActions;
           };
           try {
-            const visible = await execute(false);
+            await execute(false);
+            assertCurrent();
             if (
-              protocolFailure &&
-              !visible &&
-              current.settings.repairFormat !== false &&
-              protocolFailure instanceof ProtocolError
+              !terminalFailure &&
+              !effectAttempted &&
+              !held.length &&
+              ((batch.trigger === "idle" && !protocolFailure) ||
+                (protocolFailure instanceof ProtocolError &&
+                  current.settings.repairFormat !== false))
             ) {
+              correctionUsed = true;
               protocolFailure = undefined;
               await execute(true);
             }
+            if (held.length) {
+              const first = held[0].action as Extract<ReplyAction, { type: "message" }>;
+              if (!correctionUsed && !terminalFailure) {
+                correctionUsed = true;
+                const id = await correctTarget(first);
+                if (id) first.softReplyTo = id;
+              }
+              // Even an unsuccessful correction sends the original body, never
+              // the correction's rewritten text or extra operations.
+              for (const item of held) await sendAction(item);
+            }
+            assertCurrent();
             if (protocolFailure) throw protocolFailure;
             if (terminalFailure) throw new Error("OpenClaw agent run failed");
+            if (batch.trigger === "idle" && !visibleEffects) {
+              batch.recordOutcome("generation_failed", "No opening produced after one correction");
+              ctx.log?.warn("QQ idle opening produced no visible message after one correction");
+            }
+          } catch (error) {
+            if (
+              error instanceof SendCancelledError ||
+              (batch.trigger === "idle" &&
+                (!batch.isCurrent() || pendingHumans.get(batch.conversationKey)?.size))
+            ) {
+              if (!visibleEffects) batch.recordOutcome("cancelled");
+              return;
+            }
+            batch.recordOutcome(
+              effectAttempted ? "send_failed" : "generation_failed",
+              String(error),
+            );
+            throw error;
           } finally {
-            toolRoutes.delete(sessionKey);
+            if (toolRoutes.get(sessionKey) === deliveryRoute) toolRoutes.delete(sessionKey);
           }
         },
       });
       const receive = (event: OneBotEvent) => {
+        // Observe platform messages synchronously. Hydrating a quoted message or
+        // media may await I/O, but that must not hide fresh activity from sends.
+        const normalized = normalizeEvent(event, account, selfId);
+        const human = normalized?.human && !normalized.self ? normalized : undefined;
+        let pending: Set<string> | undefined;
+        if (human && !store.eventWatermark(account.accountId, human.conversationKey, human.id)) {
+          const entries = observed.get(human.conversationKey) ?? [];
+          if (!entries.some((entry) => entry.id === human.id)) {
+            entries.push({ id: human.id, time: human.time, order: ++observationOrder });
+            observed.set(
+              human.conversationKey,
+              entries.slice(-Math.max(500, account.settings.cacheLimit ?? 500)),
+            );
+            pending = pendingHumans.get(human.conversationKey) ?? new Set();
+            pending.add(human.id);
+            pendingHumans.set(human.conversationKey, pending);
+          }
+        }
         ingestion = ingestion
           .then(async () => {
             if (stopped) return;
-            const normalized = normalizeEvent(event, account, selfId);
             if (normalized) {
               const command = detectNewCommand(event, selfId);
               if (command) {
@@ -1195,10 +1563,21 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
                   mention: true,
                 };
                 scheduler.ingest(commandEvent);
-              } else scheduler.ingest(await enrichEvent(normalized, bot));
+              } else {
+                let enriched = normalized;
+                try {
+                  enriched = await enrichEvent(normalized, bot);
+                } catch (error) {
+                  ctx.log?.warn(`QQ message enrichment failed: ${String(error)}`);
+                }
+                scheduler.ingest(enriched);
+              }
             }
           })
-          .catch((e) => ctx.log?.error(String(e)));
+          .catch((e) => ctx.log?.error(String(e)))
+          .finally(() => {
+            if (human) pending?.delete(human.id);
+          });
       };
       const unsubscribe = bot.onEvent(receive);
       const stop = async () => {
@@ -1227,6 +1606,8 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
           stop,
           imageLinks: imageService.links,
           users,
+          observed,
+          pendingHumans,
         });
 
         backfill = () => {
@@ -1321,6 +1702,7 @@ export function registerConversationTools(api: OpenClawPluginApi): void {
     if (ctx.agentId !== TARGET_AGENT_ID || !ctx.sessionKey) return;
     const route = toolRoutes.get(ctx.sessionKey);
     if (!route) return;
+    route.assertCurrent?.();
     const state = running.get(route.accountId);
     if (!state) return;
     const params = resolveImageToolParams(event.toolName, event.params, (url) =>
@@ -1362,6 +1744,7 @@ export function registerConversationTools(api: OpenClawPluginApi): void {
           ctx.assertInvocationCurrent?.();
           if (toolRoutes.get(ctx.sessionKey!) !== route)
             throw new Error("Conversation run has ended");
+          route.assertCurrent?.();
           const cfg = ctx.getRuntimeConfig?.() ?? ctx.runtimeConfig ?? ctx.config;
           if (!cfg) throw new Error("Runtime configuration unavailable");
           isAllowed(cfg, route.accountId, route.target);
@@ -1410,7 +1793,9 @@ export function registerConversationTools(api: OpenClawPluginApi): void {
                 details: {},
               };
             ctx.assertInvocationCurrent?.();
-            await state.transport.poke(route.target, id!);
+            route.beforeEffect?.();
+            await state.transport.poke(route.target, id!, { assertCurrent: route.assertCurrent });
+            route.onEffect?.("poke");
             return { content: [{ type: "text", text: "Poke accepted" }], details: {} };
           }
           let events: OneBotEvent[];

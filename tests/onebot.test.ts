@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { OneBotTransport, type OneBotEvent } from "../src/onebot.js";
+import { OneBotTransport, SendCancelledError, type OneBotEvent } from "../src/onebot.js";
 
 const cleanup: (() => Promise<void> | void)[] = [];
 afterEach(async () => {
@@ -71,6 +71,114 @@ async function fixture(responder?: (call: Call, socket: WebSocket) => boolean) {
 }
 
 describe("SnowLuma v2.3.4 wire compatibility", () => {
+  it("resolves conditional replies only when a queued message reaches native dispatch", async () => {
+    let release: (() => void) | undefined;
+    const { transport, calls } = await fixture((call, socket) => {
+      if (call.action !== "send_group_msg" || release) return false;
+      release = () =>
+        socket.send(
+          JSON.stringify({ status: "ok", retcode: 0, data: { message_id: -1 }, echo: call.echo }),
+        );
+      return true;
+    });
+    const target = { kind: "group" as const, id: "20001" };
+    const first = transport.send(target, [{ type: "text", data: { text: "blocking" } }]);
+    await expect.poll(() => Boolean(release)).toBe(true);
+    let hasNewMessage = false;
+    let preparations = 0;
+    const second = transport.send(target, [{ type: "text", data: { text: "answer" } }], {
+      prepare: (parts) => {
+        preparations++;
+        return hasNewMessage ? [{ type: "reply", data: { id: "-123" } }, ...parts] : parts;
+      },
+    });
+    expect(preparations).toBe(0);
+    hasNewMessage = true;
+    release!();
+    await Promise.all([first, second]);
+    expect(preparations).toBe(1);
+    expect(calls.at(-1)?.params.message).toEqual([
+      { type: "reply", data: { id: "-123" } },
+      { type: "text", data: { text: "answer" } },
+    ]);
+  });
+
+  it("cancels stale queued text and file sends before any platform effect", async () => {
+    let release: (() => void) | undefined;
+    const { transport, calls } = await fixture((call, socket) => {
+      if (call.action !== "send_group_msg" || release) return false;
+      release = () =>
+        socket.send(
+          JSON.stringify({ status: "ok", retcode: 0, data: { message_id: -1 }, echo: call.echo }),
+        );
+      return true;
+    });
+    const target = { kind: "group" as const, id: "20001" };
+    const first = transport.send(target, [{ type: "text", data: { text: "blocking" } }]);
+    await expect.poll(() => Boolean(release)).toBe(true);
+    let current = true;
+    const assertCurrent = () => {
+      if (!current) throw new SendCancelledError();
+    };
+    const text = transport.send(target, [{ type: "text", data: { text: "stale" } }], {
+      assertCurrent,
+    });
+    const file = transport.sendFile(target, "/server/file", undefined, { assertCurrent });
+    const rejected = Promise.all([
+      expect(text).rejects.toBeInstanceOf(SendCancelledError),
+      expect(file).rejects.toBeInstanceOf(SendCancelledError),
+    ]);
+    current = false;
+    release!();
+    await first;
+    await rejected;
+    expect(calls.filter((call) => call.action === "send_group_msg")).toHaveLength(1);
+    expect(calls.some((call) => call.action.includes("upload_group_file"))).toBe(false);
+  });
+
+  it("rechecks guards after asynchronous preparation and validates prepared segments", async () => {
+    const { transport, calls } = await fixture();
+    let current = true;
+    await expect(
+      transport.send({ kind: "group", id: "20001" }, [{ type: "text", data: { text: "answer" } }], {
+        prepare: async (parts) => {
+          current = false;
+          return parts;
+        },
+        assertCurrent: () => {
+          if (!current) throw new SendCancelledError();
+        },
+      }),
+    ).rejects.toBeInstanceOf(SendCancelledError);
+    await expect(
+      transport.send(
+        { kind: "private", id: "10002" },
+        [{ type: "text", data: { text: "answer" } }],
+        {
+          prepare: () => [{ type: "at", data: { qq: "10002" } }],
+        },
+      ),
+    ).rejects.toThrow("do not support");
+    await expect(
+      transport.send({ kind: "group", id: "20001" }, [{ type: "text", data: { text: "answer" } }], {
+        prepare: () => [{ type: "reply", data: { id: "0" } }],
+      }),
+    ).rejects.toThrow("Invalid message");
+    expect(calls.filter((call) => call.action.startsWith("send_"))).toHaveLength(0);
+    const assertCurrent = () => {
+      throw new SendCancelledError();
+    };
+    await expect(
+      transport.poke({ kind: "group", id: "20001" }, "10002", { assertCurrent }),
+    ).rejects.toBeInstanceOf(SendCancelledError);
+    await expect(
+      transport.reaction("-123", "128077", true, { assertCurrent }),
+    ).rejects.toBeInstanceOf(SendCancelledError);
+    expect(calls.some((call) => ["group_poke", "set_msg_emoji_like"].includes(call.action))).toBe(
+      false,
+    );
+  });
+
   it("preserves signed history anchors and sends reply and @ independently", async () => {
     const { transport, calls } = await fixture();
     const history = await transport.history({ kind: "group", id: "20001" }, 20, -123456);

@@ -16,14 +16,18 @@ vi.mock("../src/inbound-images.js", () => ({
   prepareInboundImages: (...args: unknown[]) => mocks.inboundImages(...args),
 }));
 vi.mock("../src/onebot.js", () => ({
+  SendCancelledError: class extends Error {},
   OneBotTransport: class {
     handler?: (event: OneBotEvent) => void;
     sends: OneBotSegment[][] = [];
     uploads: Uint8Array[] = [];
     reactions: unknown[][] = [];
+    pokes: unknown[][] = [];
     files: string[] = [];
     closed = false;
     historyEvents: OneBotEvent[] = [];
+    beforeSend?: () => Promise<void>;
+    lookupMessage?: (id: string) => Promise<OneBotEvent>;
     constructor(
       private options: { onStatus?: (status: { connected: boolean; selfId?: string }) => void },
     ) {
@@ -48,14 +52,31 @@ vi.mock("../src/onebot.js", () => ({
       this.options.onStatus?.({ connected: false });
       this.options.onStatus?.({ connected: true, selfId: "10002" });
     }
-    async send(_target: unknown, parts: OneBotSegment[]) {
-      this.sends.push(parts);
+    async send(
+      _target: unknown,
+      parts: OneBotSegment[],
+      options: {
+        assertCurrent?: () => void;
+        prepare?: (parts: OneBotSegment[]) => OneBotSegment[] | Promise<OneBotSegment[]>;
+      } = {},
+    ) {
+      await this.beforeSend?.();
+      options.assertCurrent?.();
+      const prepared = options.prepare ? await options.prepare(parts) : parts;
+      options.assertCurrent?.();
+      this.sends.push(prepared);
       return { message_id: -900 - this.sends.length };
     }
     async directory() {
       return [];
     }
-    async poke() {}
+    async getMessage(id: string) {
+      if (this.lookupMessage) return this.lookupMessage(id);
+      throw new Error("No fixture message lookup");
+    }
+    async poke(...args: unknown[]) {
+      this.pokes.push(args);
+    }
     async reaction(...args: unknown[]) {
       this.reactions.push(args);
     }
@@ -82,9 +103,12 @@ type Bot = {
   sends: OneBotSegment[][];
   uploads: Uint8Array[];
   reactions: unknown[][];
+  pokes: unknown[][];
   files: string[];
   closed: boolean;
   historyEvents: OneBotEvent[];
+  beforeSend?: () => Promise<void>;
+  lookupMessage?: (id: string) => Promise<OneBotEvent>;
   reconnect(): void;
 };
 type Dispatch = {
@@ -103,7 +127,12 @@ afterEach(async () => {
 });
 async function fixture(
   dispatch: (value: Dispatch) => Promise<void>,
-  options: { routeAgent?: string; batchIntervalMs?: number; commandAllowFrom?: string[] } = {},
+  options: {
+    routeAgent?: string;
+    batchIntervalMs?: number;
+    commandAllowFrom?: string[];
+    idleAfterMs?: number;
+  } = {},
 ) {
   const directory = await mkdtemp(join(tmpdir(), "snowluma-channel-"));
   const statePath = join(directory, "state.sqlite");
@@ -121,6 +150,7 @@ async function fixture(
         selfId: "10002",
         statePath,
         batchIntervalMs: options.batchIntervalMs,
+        idleAfterMs: options.idleAfterMs,
         initialBatchWaitMs: 0,
         groups: { "20001": {} },
         privateChats: { "10001": {} },
@@ -158,18 +188,18 @@ async function fixture(
   mocks.durable.mockImplementation(
     async (input: {
       text?: string;
-      payloads: Array<{ text: string }>;
+      payloads: Array<{ text: string; channelData?: Record<string, unknown> }>;
       to: string;
       accountId: string;
       session?: { key: string };
     }) => {
-      await snowlumaPlugin.outbound!.sendText!({
+      await snowlumaPlugin.outbound!.sendPayload!({
         cfg,
         to: input.to,
         accountId: input.accountId,
-        text: input.payloads[0]!.text,
+        payload: input.payloads[0]!,
         sessionKey: input.session?.key,
-      } as Parameters<NonNullable<NonNullable<typeof snowlumaPlugin.outbound>["sendText"]>>[0]);
+      } as Parameters<NonNullable<NonNullable<typeof snowlumaPlugin.outbound>["sendPayload"]>>[0]);
       return { status: "sent" };
     },
   );
@@ -241,6 +271,416 @@ async function fixture(
 }
 
 describe("channel orchestration with injected host and transport", () => {
+  it("keeps a native tool message and its plain streamed followup in one turn without target repair or duplication", async () => {
+    const f = await fixture(async ({ replyOptions }) => {
+      await replyOptions.onPreparedAgentRunStart();
+      await snowlumaPlugin.outbound!.sendText!({
+        cfg: f.cfg,
+        accountId: "default",
+        to: "qq-snowluma:group:20001",
+        sessionKey: "agent:rion:qq-group",
+        text: '<msg soft_reply_to="-123">工具已经发过的内容</msg>',
+      } as Parameters<NonNullable<NonNullable<typeof snowlumaPlugin.outbound>["sendText"]>>[0]);
+      await replyOptions.onPartialReply({ text: "<msg>再补一句</msg>" });
+    });
+    f.emit();
+    await vi.waitFor(() => expect(f.bot.sends).toHaveLength(2));
+    await f.stop();
+    expect(f.calls).toHaveLength(1);
+    expect(f.bot.sends).toEqual([
+      [{ type: "text", data: { text: "工具已经发过的内容" } }],
+      [{ type: "text", data: { text: "再补一句" } }],
+    ]);
+    expect(mocks.durable).toHaveBeenCalledTimes(1);
+    expect(f.errors).toEqual([]);
+  });
+  it("blocks native poke and reaction tools from an idle turn superseded by a human message", async () => {
+    type ContextTool = { execute(id: string, params: unknown): Promise<unknown> };
+    let factory: ((ctx: Record<string, unknown>) => ContextTool | null) | undefined;
+    registerConversationTools({
+      on: () => {},
+      registerTool: (value: unknown) => {
+        factory = value as typeof factory;
+      },
+    } as unknown as Parameters<typeof registerConversationTools>[0]);
+    let captured: ContextTool | null = null;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const f = await fixture(
+      async ({ ctx, replyOptions }) => {
+        await replyOptions.onPreparedAgentRunStart();
+        if ((ctx.extra as { InternalTurnSource?: string }).InternalTurnSource === "heartbeat") {
+          captured = factory!({
+            messageChannel: CHANNEL_ID,
+            sessionKey: "agent:rion:qq-group",
+            agentId: "rion",
+            config: f.cfg,
+          });
+          await gate;
+        }
+        await replyOptions.onPartialReply({ text: "<no-reply/>" });
+      },
+      { idleAfterMs: 80 },
+    );
+    f.emit();
+    await vi.waitFor(() => expect(captured).not.toBeNull());
+    (f.cfg.channels![CHANNEL_ID] as { idleEnabled?: boolean }).idleEnabled = false;
+    f.emit(-124);
+    await expect(
+      captured!.execute("poke", { operation: "poke", user_id: "u7pt" }),
+    ).rejects.toThrow();
+    await expect(
+      snowlumaPlugin.actions!.handleAction!({
+        cfg: f.cfg,
+        accountId: "default",
+        agentId: "rion",
+        sessionKey: "agent:rion:qq-group",
+        channel: CHANNEL_ID,
+        action: "react",
+        params: { to: "qq-snowluma:group:20001", messageId: "-123", emoji: "128077" },
+      } as Parameters<NonNullable<NonNullable<typeof snowlumaPlugin.actions>["handleAction"]>>[0]),
+    ).rejects.toThrow();
+    release();
+    await vi.waitFor(() => expect(f.calls).toHaveLength(3));
+    await f.stop();
+    expect(f.bot.pokes).toHaveLength(0);
+    expect(f.bot.reactions).toHaveLength(0);
+    expect(f.bot.sends).toHaveLength(0);
+  });
+  it("starts idle with only a task prompt and persists its delivery identity and outcome", async () => {
+    const f = await fixture(
+      async ({ ctx, replyOptions }) => {
+        await replyOptions.onPreparedAgentRunStart();
+        const idle =
+          (ctx.extra as { InternalTurnSource?: string }).InternalTurnSource === "heartbeat";
+        await replyOptions.onPartialReply({
+          text: idle ? "<msg>今天发现什么有意思的小事</msg>" : "<no-reply/>",
+        });
+      },
+      { idleAfterMs: 80 },
+    );
+    f.emit(-123, {
+      message: [
+        { type: "file", data: { file: "old.pdf", url: "https://example.com/old.pdf" } },
+        { type: "video", data: { url: "https://example.com/old.mp4" } },
+      ],
+    });
+    await vi.waitFor(() => expect(f.calls).toHaveLength(1));
+    const imagePreparations = mocks.inboundImages.mock.calls.length;
+    await vi.waitFor(() => expect(f.bot.sends).toHaveLength(1));
+    await f.stop();
+    const idle = f.calls[1]!;
+    const message = idle.ctx.message as { body: string; rawBody: string; bodyForAgent: string };
+    expect(message.body).toBe(message.rawBody);
+    expect(message.body).toBe(message.bodyForAgent);
+    expect(message.body).not.toMatch(/qq-context|history|current|<user|old\.pdf|old\.mp4/);
+    expect(message.body.length).toBeGreaterThan(10);
+    expect(idle.ctx.media).toEqual([]);
+    expect(mocks.inboundImages).toHaveBeenCalledTimes(imagePreparations);
+    expect(mocks.durable.mock.calls[0]![0].payloads[0].channelData).toEqual({
+      [CHANNEL_ID]: { idleBatchId: idle.ctx.messageId },
+    });
+    const store = new EventStore(f.statePath);
+    expect(store.batchRecord(String(idle.ctx.messageId))).toMatchObject({
+      trigger: "idle",
+      status: "completed",
+      outcome: "sent",
+    });
+    store.close();
+    expect(f.errors).toEqual([]);
+  });
+  it.each(["<no-reply/>", ""])(
+    "corrects an idle %j once and sends the opening",
+    async (initial) => {
+      let idleAttempts = 0;
+      const f = await fixture(
+        async ({ ctx, replyOptions }) => {
+          await replyOptions.onPreparedAgentRunStart();
+          const idle =
+            (ctx.extra as { InternalTurnSource?: string }).InternalTurnSource === "heartbeat";
+          const text = idle
+            ? ++idleAttempts === 1
+              ? initial
+              : "<msg>最近在玩什么</msg>"
+            : "<no-reply/>";
+          await replyOptions.onPartialReply({ text });
+        },
+        { idleAfterMs: 60 },
+      );
+      f.emit();
+      await vi.waitFor(() => expect(f.bot.sends).toHaveLength(1));
+      await f.stop();
+      expect(idleAttempts).toBe(2);
+      expect(f.calls[2]!.replyOptions).toMatchObject({ disableTools: true });
+      expect(f.bot.sends[0]).toEqual([{ type: "text", data: { text: "最近在玩什么" } }]);
+    },
+  );
+  it("records an idle generation failure after exactly one unsuccessful correction", async () => {
+    const f = await fixture(
+      async ({ replyOptions }) => {
+        await replyOptions.onPreparedAgentRunStart();
+        await replyOptions.onPartialReply({ text: "<no-reply/>" });
+      },
+      { idleAfterMs: 60 },
+    );
+    f.emit();
+    await vi.waitFor(() => expect(f.calls).toHaveLength(3));
+    await f.stop();
+    expect(f.bot.sends).toHaveLength(0);
+    const store = new EventStore(f.statePath);
+    expect(store.batchRecord(String(f.calls[1]!.ctx.messageId))).toMatchObject({
+      trigger: "idle",
+      outcome: "generation_failed",
+    });
+    store.close();
+  });
+  it("cancels an idle opening when a human speaks during generation", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const f = await fixture(
+      async ({ ctx, replyOptions }) => {
+        await replyOptions.onPreparedAgentRunStart();
+        if ((ctx.extra as { InternalTurnSource?: string }).InternalTurnSource === "heartbeat") {
+          await gate;
+          await replyOptions.onPartialReply({ text: "<msg>迟到的开场</msg>" });
+        } else await replyOptions.onPartialReply({ text: "<no-reply/>" });
+      },
+      { idleAfterMs: 80 },
+    );
+    f.emit();
+    await vi.waitFor(() => expect(f.calls).toHaveLength(2));
+    f.emit(-124);
+    release();
+    await vi.waitFor(() => expect(f.calls).toHaveLength(3));
+    await f.stop();
+    expect(f.bot.sends).toHaveLength(0);
+    const store = new EventStore(f.statePath);
+    expect(store.batchRecord(String(f.calls[1]!.ctx.messageId))).toMatchObject({
+      outcome: "cancelled",
+    });
+    store.close();
+  });
+  it("cancels an idle opening after it enters the send queue and a new human message arrives", async () => {
+    let release!: () => void;
+    let releaseLookup!: () => void;
+    let queued = false;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const lookupGate = new Promise<void>((resolve) => {
+      releaseLookup = resolve;
+    });
+    const f = await fixture(
+      async ({ ctx, replyOptions }) => {
+        await replyOptions.onPreparedAgentRunStart();
+        await replyOptions.onPartialReply({
+          text:
+            (ctx.extra as { InternalTurnSource?: string }).InternalTurnSource === "heartbeat"
+              ? "<msg>排队中的开场</msg>"
+              : "<no-reply/>",
+        });
+      },
+      { idleAfterMs: 80 },
+    );
+    f.bot.beforeSend = async () => {
+      queued = true;
+      await gate;
+    };
+    f.bot.lookupMessage = async () => {
+      await lookupGate;
+      return {
+        message_id: -456,
+        user_id: 10001,
+        group_id: 20001,
+        message: [{ type: "text", data: { text: "quoted" } }],
+      };
+    };
+    f.emit();
+    await vi.waitFor(() => expect(queued).toBe(true));
+    (f.cfg.channels![CHANNEL_ID] as { idleEnabled?: boolean }).idleEnabled = false;
+    f.emit(-124, {
+      message: [
+        { type: "reply", data: { id: "-456" } },
+        { type: "at", data: { qq: "10002" } },
+        { type: "text", data: { text: "新的消息" } },
+      ],
+    });
+    release();
+    const store = new EventStore(f.statePath);
+    await vi.waitFor(() =>
+      expect(store.batchRecord(String(f.calls[1]!.ctx.messageId))).toMatchObject({
+        outcome: "cancelled",
+      }),
+    );
+    releaseLookup();
+    await vi.waitFor(() => expect(f.calls).toHaveLength(3));
+    await f.stop();
+    expect(f.bot.sends).toHaveLength(0);
+    expect(store.batchRecord(String(f.calls[1]!.ctx.messageId))).toMatchObject({
+      outcome: "cancelled",
+    });
+    store.close();
+  });
+  it("uses only corrected target metadata while preserving the original body and actions", async () => {
+    const f = await fixture(async ({ ctx, replyOptions }) => {
+      await replyOptions.onPreparedAgentRunStart();
+      if (ctx.BodyForAgent) {
+        expect(replyOptions).toMatchObject({ disableTools: true });
+        await replyOptions.onPartialReply({
+          text: '<poke user_id="u7pt"/><msg soft_reply_to="-123" at="u7pt">被改写的正文</msg><msg>额外消息</msg>',
+        });
+      } else {
+        await replyOptions.onPartialReply({
+          text: '<poke user_id="u7pt"/><msg>原始正文</msg><msg>原始补充</msg>',
+        });
+      }
+    });
+    f.emit();
+    await vi.waitFor(() => expect(f.bot.sends).toHaveLength(2));
+    await f.stop();
+    expect(f.calls).toHaveLength(2);
+    expect(f.bot.pokes).toHaveLength(1);
+    expect(f.bot.sends).toEqual([
+      [{ type: "text", data: { text: "原始正文" } }],
+      [{ type: "text", data: { text: "原始补充" } }],
+    ]);
+    expect(mocks.durable.mock.calls[1]![0].payloads[0].text).toContain('soft_reply_to="-123"');
+  });
+  it("falls back to the original ordinary message after one target correction still lacks an ID", async () => {
+    const f = await fixture(async ({ ctx, replyOptions }) => {
+      await replyOptions.onPreparedAgentRunStart();
+      await replyOptions.onPartialReply({
+        text: ctx.BodyForAgent ? "<msg>错误改写</msg>" : "<msg>原话</msg>",
+      });
+    });
+    f.emit();
+    await vi.waitFor(() => expect(f.bot.sends).toHaveLength(1));
+    await f.stop();
+    expect(f.calls).toHaveLength(2);
+    expect(f.bot.sends).toEqual([[{ type: "text", data: { text: "原话" } }]]);
+  });
+  it.each([false, true])(
+    "materializes a soft reply only if a later human message exists (later=%s)",
+    async (later) => {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let turn = 0;
+      const f = await fixture(async ({ replyOptions }) => {
+        await replyOptions.onPreparedAgentRunStart();
+        if (++turn === 1) {
+          await gate;
+          await replyOptions.onPartialReply({
+            text: '<msg soft_reply_to="-123">接这句</msg><msg>再补一句</msg>',
+          });
+        } else await replyOptions.onPartialReply({ text: "<no-reply/>" });
+      });
+      const time = Math.floor(Date.now() / 1000);
+      f.emit(-123, { time });
+      await vi.waitFor(() => expect(f.calls).toHaveLength(1));
+      if (later)
+        f.emit(-124, { time, message: [{ type: "text", data: { text: "同一人同秒后续消息" } }] });
+      else {
+        f.emit(-125, { time, post_type: "message_sent", user_id: 10002 });
+        f.emit(-126, { time, post_type: "notice", notice_type: "group_msg_emoji_like" });
+      }
+      release();
+      await vi.waitFor(() => expect(f.bot.sends).toHaveLength(2));
+      await f.stop();
+      expect(f.bot.sends[0]).toEqual([
+        ...(later ? [{ type: "reply", data: { id: "-123" } }] : []),
+        { type: "text", data: { text: "接这句" } },
+      ]);
+      expect(f.bot.sends[1]).toEqual([{ type: "text", data: { text: "再补一句" } }]);
+      expect(f.bot.sends.flat().some((part) => part.type === "at")).toBe(false);
+      expect(f.errors).toEqual([]);
+    },
+  );
+  it("preserves an explicit mention with soft reply and rejects a target outside the current conversation", async () => {
+    const f = await fixture(async ({ replyOptions }) => {
+      await replyOptions.onPreparedAgentRunStart();
+      await replyOptions.onPartialReply({ text: "<no-reply/>" });
+    });
+    f.emit();
+    await vi.waitFor(() => expect(f.calls).toHaveLength(1));
+    const store = new EventStore(f.statePath);
+    store.add({
+      id: "-998",
+      accountId: "default",
+      conversationKey: JSON.stringify(["default", "group", "20002", ""]),
+      kind: "group",
+      time: Date.now(),
+      userId: "10001",
+      body: "other group",
+      mention: false,
+      self: false,
+    });
+    store.add({
+      id: "-997",
+      accountId: "default",
+      conversationKey: JSON.stringify(["default", "group", "20001", ""]),
+      kind: "group",
+      time: Date.now() + 1000,
+      userId: "10001",
+      body: "historical import",
+      mention: false,
+      self: false,
+      trigger: false,
+      human: false,
+    });
+    store.close();
+    const send = (text: string) =>
+      snowlumaPlugin.outbound!.sendText!({
+        cfg: f.cfg,
+        accountId: "default",
+        to: "qq-snowluma:group:20001",
+        sessionKey: "agent:rion:qq-group",
+        text,
+      } as Parameters<NonNullable<NonNullable<typeof snowlumaPlugin.outbound>["sendText"]>>[0]);
+    await send('<msg soft_reply_to="-123" at="u7pt">提醒你</msg>');
+    expect(f.bot.sends[0]).toEqual([
+      { type: "at", data: { qq: "10001" } },
+      { type: "text", data: { text: "提醒你" } },
+    ]);
+    await expect(send('<msg soft_reply_to="-999">未知目标</msg>')).rejects.toThrow("conversation");
+    await expect(send('<msg soft_reply_to="-998">别群目标</msg>')).rejects.toThrow("conversation");
+    expect(f.bot.sends).toHaveLength(1);
+  });
+  it("checks soft reply visibility after queueing instead of freezing it at generation time", async () => {
+    let release!: () => void;
+    let queued = false;
+    let turn = 0;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const f = await fixture(async ({ replyOptions }) => {
+      await replyOptions.onPreparedAgentRunStart();
+      await replyOptions.onPartialReply({
+        text: ++turn === 1 ? '<msg soft_reply_to="-123">排队的回复</msg>' : "<no-reply/>",
+      });
+    });
+    f.bot.beforeSend = async () => {
+      queued = true;
+      await gate;
+    };
+    const time = Math.floor(Date.now() / 1000);
+    f.emit(-123, { time });
+    await vi.waitFor(() => expect(queued).toBe(true));
+    f.emit(-124, { time });
+    release();
+    await vi.waitFor(() => expect(f.bot.sends).toHaveLength(1));
+    await f.stop();
+    expect(f.bot.sends[0]).toEqual([
+      { type: "reply", data: { id: "-123" } },
+      { type: "text", data: { text: "排队的回复" } },
+    ]);
+    expect(mocks.durable.mock.calls[0]![0].payloads[0].text).toContain('soft_reply_to="-123"');
+  });
   it("sends structured local images using host-approved rion roots when text delivery has no media hints", async () => {
     const f = await fixture(async () => {});
     const workspace = (f.cfg.agents!.entries!.rion as { workspace: string }).workspace;
@@ -311,7 +751,7 @@ describe("channel orchestration with injected host and transport", () => {
       await replyOptions.onPartialReply({
         text:
           ++turn === 1
-            ? '<user-name user_id="u7pt" name="小明"/><msg at="小明">记住啦</msg>'
+            ? '<user-name user_id="u7pt" name="小明"/><msg soft_reply_to="-371" at="小明">记住啦</msg>'
             : "<no-reply></no-reply>",
       });
     });
@@ -465,7 +905,7 @@ describe("channel orchestration with injected host and transport", () => {
   it("does not replay a visible block to repair a later malformed block", async () => {
     const f = await fixture(async ({ replyOptions }) => {
       replyOptions.onPreparedAgentRunStart();
-      await replyOptions.onPartialReply({ text: "<msg>已发送</msg>broken" });
+      await replyOptions.onPartialReply({ text: '<msg soft_reply_to="-123">已发送</msg>broken' });
     });
     f.emit();
     await vi.waitFor(() => expect(f.errors).not.toHaveLength(0));
@@ -501,7 +941,7 @@ describe("channel orchestration with injected host and transport", () => {
       replyOptions.onPreparedAgentRunStart();
       if (++count === 1) {
         await gate;
-        await replyOptions.onPartialReply({ text: "<msg>first reply</msg>" });
+        await replyOptions.onPartialReply({ text: '<msg soft_reply_to="-123">first reply</msg>' });
       } else await replyOptions.onPartialReply({ text: "<no-reply></no-reply>" });
     });
     f.emit(-123);
@@ -531,8 +971,10 @@ describe("channel orchestration with injected host and transport", () => {
     const f = await fixture(async ({ replyOptions, dispatcherOptions }) => {
       replyOptions.onPreparedAgentRunStart();
       await replyOptions.onAssistantMessageStart();
-      await replyOptions.onPartialReply({ text: "<msg>同一句</msg><msg>补充</msg>" });
-      await dispatcherOptions.deliver({ text: "<msg>同一句</msg>" });
+      await replyOptions.onPartialReply({
+        text: '<msg soft_reply_to="-123">同一句</msg><msg>补充</msg>',
+      });
+      await dispatcherOptions.deliver({ text: '<msg soft_reply_to="-123">同一句</msg>' });
       await dispatcherOptions.deliver({ text: "<msg>补充</msg>" });
       await replyOptions.onAssistantMessageStart();
       await replyOptions.onPartialReply({ text: "<msg>同一句</msg>" });
@@ -547,8 +989,8 @@ describe("channel orchestration with injected host and transport", () => {
   it("refuses a replacement of an already sent prefix without sending again", async () => {
     const f = await fixture(async ({ replyOptions }) => {
       replyOptions.onPreparedAgentRunStart();
-      await replyOptions.onPartialReply({ text: "<msg>已发送</msg>" });
-      await replyOptions.onPartialReply({ text: "<msg>替换</msg>" });
+      await replyOptions.onPartialReply({ text: '<msg soft_reply_to="-123">已发送</msg>' });
+      await replyOptions.onPartialReply({ text: '<msg soft_reply_to="-123">替换</msg>' });
     });
     f.emit();
     await vi.waitFor(() => expect(f.errors).not.toHaveLength(0));
@@ -628,7 +1070,9 @@ describe("channel orchestration with injected host and transport", () => {
       params: { to: "qq-snowluma:group:20001", messageId: "-123", emoji: "128077" },
     } as Parameters<NonNullable<NonNullable<typeof snowlumaPlugin.actions>["handleAction"]>>[0];
     await snowlumaPlugin.actions!.handleAction!(context);
-    expect(f.bot.reactions).toEqual([["-123", "128077", true]]);
+    expect(f.bot.reactions).toEqual([
+      ["-123", "128077", true, { assertCurrent: expect.any(Function) }],
+    ]);
     await expect(
       snowlumaPlugin.actions!.handleAction!({
         ...context,
