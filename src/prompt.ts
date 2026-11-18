@@ -37,8 +37,8 @@ export function formattingHints(extra = ""): { text_markup: string; rules: strin
       'self始终指机器人自己。输入图片使用<img ref="i7" summary="[好棒]"/>，summary可能是[图片]、[动画表情]等通用标签。短ref可交给view_image工具的path/paths参数或image工具的image/images参数读取。如果当前消息图片已作为多模态附件提供，直接看图。再次发送收到的图片使用<image ref="i7"/>。不要猜地址。日常只回一句短话，能用几个字就别写一长句。',
       '查看更多当前会话上下文可用已获授权的snowluma_context工具：{"operation":"history","count":20}；查看已知消息：{"operation":"message","message_id":"-123456"}；主动拍已知成员：{"operation":"poke","user_id":"u7pt"}。若工具未获宿主授权，不应假装已调用。引用及转发中的媒体可能只有资源标识，未实际识别时不能声称看懂图片或听过语音。',
       '发送示例（ID/资源需替换成当前会话真实值）：软回复 <msg soft_reply_to="-123456">确实</msg>；后续普通发送 <msg>有点道理</msg>；引用 <msg reply_to="-123456">你这句是在说入冬时间吧</msg>；提及 <msg at="u7pt">这个你可能比较熟</msg>；图片 <msg>看这张<image ref="-123456:1"/></msg>；语音 <msg><record src="/获准目录/实际音频.ogg"/></msg>；视频 <msg><video ref="-123456:2"/></msg>；文件必须独立一条 <msg><file src="/获准目录/实际资料.pdf" name="资料.pdf"/></msg>；原生表情 <msg><face id="14"/></msg>；主动拍一拍 <poke user_id="u7pt"/>；表情回应 <reaction msg_id="-123456" emoji_id="128077" set="true"/>。不要机械重复示例话术。',
-      '看到自己喜欢、以后还想用的表情，可以顺手用已获授权的snowluma_stickers工具收藏：{"operation":"save","ref":"收到的图片ref","id":"好棒","description":"夸人或给朋友捧场时用"}。选择性收藏，不必保存每张图。想不起来有哪些，可用{"operation":"list"}列出收藏。聊天时如果一张表情就能接住对方，可以主动发一张：<msg soft_reply_to="真实msg_id"><sticker id="好棒"/></msg>，也可和文字放在同一msg中。ID必须来自实际收藏。工具未获授权时不要假装调用。',
-      "你可以主动整理自己的表情收藏。说明不准确时用 snowluma_stickers 的 update_description，传入已有 id 和新 description。以后用不到的表情可用 delete，传入你确定要删除的 id。",
+      '看到以后想用的表情，可以用已获授权的 snowluma_stickers 工具把它收藏到 QQ 账号：{"operation":"save","ref":"收到的图片ref","id":"好棒","description":"夸人或给朋友捧场时用"}。选择容易记住且符合图片内容的 ID。用 {"operation":"list"} 查 ID 和说明。发送时，每个表情独占一个 msg，例如 <msg soft_reply_to="真实msg_id"><sticker id="好棒"/></msg>。文字和 @ 另写一个 msg。ID 必须来自实际收藏。群临时会话请用文字。',
+      "用 snowluma_stickers 的 update_description 更新本地用途说明。delete 删除指定 ID，并在删除该表情的最后一个 ID 时取消 QQ 账号收藏。",
       ...(extra ? [extra] : []),
     ],
   };

@@ -71,6 +71,232 @@ async function fixture(responder?: (call: Call, socket: WebSocket) => boolean) {
 }
 
 describe("SnowLuma v2.3.4 wire compatibility", () => {
+  it("uploads bytes before saving a QQ sticker and manages the complete remote collection", async () => {
+    const content = Buffer.from("received sticker bytes");
+    const emojiId = "10001_0_0_0_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_0_0";
+    const { transport, calls } = await fixture((call, socket) => {
+      if (call.action === "upload_file_stream") {
+        const data = call.params.is_complete
+          ? {
+              type: "response",
+              status: "file_complete",
+              stream_id: call.params.stream_id,
+              received_chunks: 1,
+              total_chunks: 1,
+              file_size: content.length,
+              file_path: "/server/sticker.gif",
+              file_name: "sticker.gif",
+              sha256: createHash("sha256").update(content).digest("hex"),
+            }
+          : {
+              type: "stream",
+              status: "chunk_received",
+              stream_id: call.params.stream_id,
+              received_chunks: 1,
+              total_chunks: 1,
+            };
+        socket.send(
+          JSON.stringify({
+            status: "ok",
+            retcode: 0,
+            data,
+            echo: call.echo,
+            stream: "stream-action",
+          }),
+        );
+        return true;
+      }
+      if (call.action === "add_custom_face" || call.action === "fetch_custom_face") {
+        const data = call.action === "add_custom_face" ? { emoji_id: emojiId } : [emojiId];
+        socket.send(JSON.stringify({ status: "ok", retcode: 0, data, echo: call.echo }));
+        return true;
+      }
+      return false;
+    });
+    expect(await transport.addCustomFace(content, "sticker.gif")).toBe(emojiId);
+    expect(calls.at(-1)?.params).toEqual({ file: "/server/sticker.gif" });
+    expect(calls.filter((call) => call.action === "upload_file_stream")).toHaveLength(2);
+    expect(await transport.fetchCustomFaceIds()).toEqual([emojiId]);
+    expect(calls.at(-1)?.params).toEqual({ return_type: "id", count: 2_147_483_647 });
+    await transport.deleteCustomFace(emojiId);
+    expect(calls.at(-1)?.action).toBe("delete_custom_face");
+    expect(calls.at(-1)?.params).toEqual({ emoji_id: emojiId });
+    await expect(transport.addCustomFace(content, "sticker.gif", { maxBytes: 1 })).rejects.toThrow(
+      "exceeds upload limit",
+    );
+    expect(calls.filter((call) => call.action === "add_custom_face")).toHaveLength(1);
+  });
+
+  it("sends saved stickers through the paced native action with dispatch-time quotes", async () => {
+    let release: (() => void) | undefined;
+    const { transport, calls } = await fixture((call, socket) => {
+      if (call.action === "send_group_msg" && !release) {
+        release = () =>
+          socket.send(
+            JSON.stringify({ status: "ok", retcode: 0, data: { message_id: -1 }, echo: call.echo }),
+          );
+        return true;
+      }
+      if (call.action === "send_custom_face") {
+        socket.send(
+          JSON.stringify({ status: "ok", retcode: 0, data: { message_id: -2 }, echo: call.echo }),
+        );
+        return true;
+      }
+      return false;
+    });
+    const target = { kind: "group" as const, id: "20001" };
+    const first = transport.send(target, [{ type: "text", data: { text: "before sticker" } }]);
+    await expect.poll(() => Boolean(release)).toBe(true);
+    let shouldQuote = false;
+    const sticker = transport.sendCustomFace(target, "saved-id", {
+      prepareReplyTo: () => (shouldQuote ? "-123" : undefined),
+    });
+    expect(calls.some((call) => call.action === "send_custom_face")).toBe(false);
+    shouldQuote = true;
+    release!();
+    await first;
+    expect(await sticker).toEqual({ message_id: -2 });
+    expect(calls.at(-1)?.params).toEqual({ emoji_id: "saved-id", group_id: 20001, reply_to: -123 });
+    await transport.sendCustomFace({ kind: "private", id: "10002" }, "saved-id");
+    expect(calls.at(-1)?.params).toEqual({ emoji_id: "saved-id", user_id: 10002 });
+    await expect(
+      transport.sendCustomFace({ kind: "private", id: "10002", groupId: "20001" }, "saved-id"),
+    ).rejects.toThrow("群临时会话");
+    expect(calls.filter((call) => call.action === "send_custom_face")).toHaveLength(2);
+  });
+
+  it("rejects stale, aborted and invalid sticker sends before native dispatch", async () => {
+    const { transport, calls } = await fixture();
+    let current = true;
+    await expect(
+      transport.sendCustomFace({ kind: "group", id: "20001" }, "saved-id", {
+        prepareReplyTo: async () => {
+          current = false;
+          return "-123";
+        },
+        assertCurrent: () => {
+          if (!current) throw new SendCancelledError();
+        },
+      }),
+    ).rejects.toBeInstanceOf(SendCancelledError);
+    await expect(
+      transport.sendCustomFace({ kind: "group", id: "20001" }, "saved-id", {
+        prepareReplyTo: () => "0",
+      }),
+    ).rejects.toThrow("Invalid message");
+    await expect(
+      transport.deleteCustomFace("saved-id", { signal: AbortSignal.abort() }),
+    ).rejects.toThrow();
+    const assertCurrent = () => {
+      throw new SendCancelledError();
+    };
+    await expect(transport.fetchCustomFaceIds({ assertCurrent })).rejects.toBeInstanceOf(
+      SendCancelledError,
+    );
+    await expect(
+      transport.addCustomFace(Buffer.from("image"), "image.gif", { assertCurrent }),
+    ).rejects.toBeInstanceOf(SendCancelledError);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("rechecks the save guard after uploading and rejects malformed collection responses", async () => {
+    const content = Buffer.from("sticker");
+    let current = true;
+    const { transport, calls } = await fixture((call, socket) => {
+      if (call.action === "fetch_custom_face") {
+        socket.send(JSON.stringify({ status: "ok", retcode: 0, data: [123], echo: call.echo }));
+        return true;
+      }
+      if (call.action !== "upload_file_stream") return false;
+      if (call.params.is_complete) current = false;
+      const data = call.params.is_complete
+        ? {
+            type: "response",
+            status: "file_complete",
+            stream_id: call.params.stream_id,
+            received_chunks: 1,
+            total_chunks: 1,
+            file_size: content.length,
+            file_path: "/server/sticker.gif",
+            file_name: "sticker.gif",
+            sha256: createHash("sha256").update(content).digest("hex"),
+          }
+        : {
+            type: "stream",
+            status: "chunk_received",
+            stream_id: call.params.stream_id,
+            received_chunks: 1,
+            total_chunks: 1,
+          };
+      socket.send(
+        JSON.stringify({
+          status: "ok",
+          retcode: 0,
+          data,
+          echo: call.echo,
+          stream: "stream-action",
+        }),
+      );
+      return true;
+    });
+    await expect(
+      transport.addCustomFace(content, "sticker.gif", {
+        assertCurrent: () => {
+          if (!current) throw new SendCancelledError();
+        },
+      }),
+    ).rejects.toBeInstanceOf(SendCancelledError);
+    expect(calls.some((call) => call.action === "add_custom_face")).toBe(false);
+    await expect(transport.fetchCustomFaceIds()).rejects.toThrow("invalid saved sticker list");
+  });
+
+  it("reports missing saved stickers without retrying or sending a picture", async () => {
+    const { transport, calls } = await fixture((call, socket) => {
+      if (call.action !== "send_custom_face") return false;
+      socket.send(
+        JSON.stringify({
+          status: "failed",
+          retcode: 1200,
+          wording: "custom face is not in the saved sticker list",
+          data: null,
+          echo: call.echo,
+        }),
+      );
+      return true;
+    });
+    await expect(
+      transport.sendCustomFace({ kind: "group", id: "20001" }, "missing"),
+    ).rejects.toThrow("重新收藏");
+    expect(calls.map((call) => call.action)).toEqual(["get_login_info", "send_custom_face"]);
+  });
+
+  it("rejects sticker mutations after reconnecting to a different QQ identity", async () => {
+    let selfId = 10001;
+    const { transport, calls, socket } = await fixture((call, connection) => {
+      if (call.action !== "get_login_info") return false;
+      connection.send(
+        JSON.stringify({
+          status: "ok",
+          retcode: 0,
+          data: { user_id: selfId, nickname: "bot" },
+          echo: call.echo,
+        }),
+      );
+      return true;
+    });
+    const closed = new Promise<void>((resolve) => socket().once("close", () => resolve()));
+    socket().close();
+    await closed;
+    selfId = 10002;
+    await transport.connect();
+    await expect(transport.fetchCustomFaceIds()).rejects.toThrow("account connection changed");
+    await expect(transport.deleteCustomFace("saved-id")).rejects.toThrow(
+      "account connection changed",
+    );
+    expect(calls.every((call) => call.action === "get_login_info")).toBe(true);
+  });
+
   it("resolves conditional replies only when a queued message reaches native dispatch", async () => {
     let release: (() => void) | undefined;
     const { transport, calls } = await fixture((call, socket) => {

@@ -258,12 +258,19 @@ function serialize(action: ReplyAction): string {
     .join("");
   return `<msg${action.replyTo ? ` reply_to="${escape(action.replyTo)}"` : ""}${action.softReplyTo ? ` soft_reply_to="${escape(action.softReplyTo)}"` : ""}${action.at ? ` at="${escape(action.at)}"` : ""}>${body}</msg>`;
 }
-function checkStickers(stickers: StickerStore, accountId: string, action: ReplyAction): void {
+function checkStickers(
+  stickers: StickerStore,
+  accountId: string,
+  target: OneBotTarget,
+  action: ReplyAction,
+): void {
   if (action.type !== "message") return;
-  for (const part of action.parts) {
-    if (part.type === "sticker" && !stickers.has(accountId, part.id))
-      throw new ProtocolError(`收藏中没有表情 ID「${part.id}」。请使用已收藏的 ID，或改用文字。`);
-  }
+  const part = action.parts[0];
+  if (part?.type !== "sticker") return;
+  if (target.kind === "private" && target.groupId)
+    throw new ProtocolError("群临时会话无法发送 QQ 收藏表情。请改用文字。");
+  if (!stickers.has(accountId, part.id))
+    throw new ProtocolError(`收藏中没有表情 ID「${part.id}」。请使用已收藏的 ID，或改用文字。`);
 }
 function isAllowed(cfg: OpenClawConfig, accountId: string, t: OneBotTarget): ResolvedAccount {
   assertRionConfigured(cfg);
@@ -302,6 +309,29 @@ async function nativeAction(
       providerAccepted: true,
       result,
     });
+  const recordMessage = (
+    { message_id }: { message_id: number },
+    parts: OneBotSegment[],
+    body: string,
+  ) => {
+    guard.onEffect?.("message");
+    const id = String(message_id);
+    state.scheduler.ingest({
+      id,
+      conversationKey: keyFor(accountId, t),
+      accountId,
+      kind: t.kind,
+      time: Date.now(),
+      userId: state.selfId,
+      body,
+      mention: false,
+      self: true,
+      human: false,
+      trigger: false,
+      payload: { message_id, message: parts, user_id: Number(state.selfId) },
+    });
+    return id;
+  };
   if (action.type === "no-reply") return "";
   const known = state.store.select(
     accountId,
@@ -351,11 +381,51 @@ async function nativeAction(
   )
     throw new Error("A file must occupy a standalone msg without reply or at");
   if (action.softReplyTo) message(action.softReplyTo);
-  checkStickers(state.stickers, accountId, action);
+  if (action.replyTo) message(action.replyTo);
+  checkStickers(state.stickers, accountId, t, action);
   const maxBytes = account.settings.mediaMaxBytes ?? 50 * 1024 * 1024;
+  const softReplyTo = action.softReplyTo;
+  const resolveSoftReplyTo = (): string | undefined => {
+    if (!softReplyTo || t.kind !== "group") return undefined;
+    // Another member may have spoken during pacing or media preparation.
+    const key = keyFor(accountId, t);
+    const targetEvent = known.find((event) => event.id === softReplyTo);
+    const observations = state.observed.get(key) ?? [];
+    const observedTarget = observations.find((event) => event.id === softReplyTo);
+    const laterObserved = observations.some(
+      (event) =>
+        event.id !== softReplyTo &&
+        (event.time > (targetEvent?.time ?? observedTarget?.time ?? Infinity) ||
+          (event.time === (targetEvent?.time ?? observedTarget?.time) &&
+            event.order > (observedTarget?.order ?? -1))),
+    );
+    return !targetEvent ||
+      laterObserved ||
+      state.store.hasLaterHumanMessage(accountId, key, softReplyTo)
+      ? softReplyTo
+      : undefined;
+  };
+  const sticker = action.parts[0];
+  if (sticker?.type === "sticker") {
+    const emojiId = await state.stickers.resolveForSend(accountId, state.selfId, sticker.id, bot, {
+      signal,
+      maxBytes,
+      assertCurrent,
+    });
+    let replyTo: string | undefined;
+    beforeEffect();
+    const result = await bot.sendCustomFace(t, emojiId, {
+      signal,
+      assertCurrent,
+      prepareReplyTo: () => (replyTo = action.replyTo ?? resolveSoftReplyTo()),
+    });
+    const summary = "[动画表情]";
+    const sentParts: OneBotSegment[] = [{ type: "text", data: { text: summary } }];
+    if (replyTo) sentParts.unshift({ type: "reply", data: { id: replyTo } });
+    return recordMessage(result, sentParts, summary);
+  }
   let parts: OneBotSegment[] = [];
   if (action.replyTo) {
-    message(action.replyTo);
     parts.push({ type: "reply", data: { id: action.replyTo } });
   }
   if (action.at) {
@@ -365,12 +435,7 @@ async function nativeAction(
   for (const p of action.parts) {
     if (p.type === "text") parts.push({ type: "text", data: { text: p.text } });
     else if (p.type === "face") parts.push({ type: "face", data: { id: p.id } });
-    else if (p.type === "sticker") {
-      const { buffer, filename } = state.stickers.get(accountId, p.id, maxBytes);
-      assertCurrent();
-      const file = await bot.uploadBytes(buffer, filename, { signal, maxBytes });
-      parts.push({ type: "image", data: { file } });
-    } else {
+    else if (p.type !== "sticker") {
       let source = p.src;
       if (p.ref) {
         const resource =
@@ -429,47 +494,16 @@ async function nativeAction(
     signal,
     assertCurrent,
     prepare: (prepared) => {
-      if (!action.softReplyTo || t.kind !== "group") return prepared;
-      // Check again after pacing/upload: another member may have spoken meanwhile.
-      const key = keyFor(accountId, t);
-      const targetEvent = known.find((event) => event.id === action.softReplyTo);
-      const observations = state.observed.get(key) ?? [];
-      const observedTarget = observations.find((event) => event.id === action.softReplyTo);
-      const laterObserved = observations.some(
-        (event) =>
-          event.id !== action.softReplyTo &&
-          (event.time > (targetEvent?.time ?? observedTarget?.time ?? Infinity) ||
-            (event.time === (targetEvent?.time ?? observedTarget?.time) &&
-              event.order > (observedTarget?.order ?? -1))),
-      );
-      const later =
-        !targetEvent ||
-        laterObserved ||
-        state.store.hasLaterHumanMessage(accountId, key, action.softReplyTo);
-      parts = later ? [{ type: "reply", data: { id: action.softReplyTo } }, ...prepared] : prepared;
+      const replyTo = resolveSoftReplyTo();
+      parts = replyTo ? [{ type: "reply", data: { id: replyTo } }, ...prepared] : prepared;
       return parts;
     },
   });
-  guard.onEffect?.("message");
-  const id = String(result.message_id);
-  state.scheduler.ingest({
-    id,
-    conversationKey: keyFor(accountId, t),
-    accountId,
-    kind: t.kind,
-    time: Date.now(),
-    userId: state.selfId,
-    body: action.parts
-      .filter((p) => p.type === "text")
-      .map((p) => p.text)
-      .join(""),
-    mention: false,
-    self: true,
-    human: false,
-    trigger: false,
-    payload: { message_id: result.message_id, message: parts, user_id: Number(state.selfId) },
-  });
-  return id;
+  const body = action.parts
+    .filter((p) => p.type === "text")
+    .map((p) => p.text)
+    .join("");
+  return recordMessage(result, parts, body);
 }
 
 async function sendStructured(
@@ -1407,7 +1441,7 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
                   return;
                 }
                 if (action.type === "no-reply") return;
-                checkStickers(stickers, account.accountId, action);
+                checkStickers(stickers, account.accountId, t, action);
                 const item = {
                   action,
                   effectId: `${batch.id}:${repair ? "repair:" : ""}${identity.assistantIndex}:${identity.blockIndex}`,
@@ -1893,7 +1927,7 @@ export function registerConversationTools(api: OpenClawPluginApi): void {
         name: "snowluma_stickers",
         label: "SnowLuma stickers",
         description:
-          '管理你自己的 QQ 表情收藏。save 需要图片 ref、ID 和用途说明，list 列出收藏，update_description 按 ID 修改说明，delete 按 ID 删除。发送请在 msg 内写 <sticker id="已收藏的ID"/>。',
+          '管理 QQ 账号的收藏表情及本地名称。save 用图片 ref、ID 和用途说明收藏，list 列出本地 ID，update_description 修改本地说明，delete 删除 ID（最后一个 ID 会取消 QQ 收藏）。发送使用独立一条 <msg><sticker id="已收藏的ID"/></msg>。',
         parameters: {
           type: "object",
           properties: {
@@ -1909,6 +1943,12 @@ export function registerConversationTools(api: OpenClawPluginApi): void {
           const account = assertCurrent();
           signal?.throwIfAborted();
           const state = live(route.accountId);
+          const login = await state.transport.login();
+          signal?.throwIfAborted();
+          assertCurrent();
+          if (String(login.user_id) !== state.selfId)
+            throw new Error("SnowLuma 连接的 QQ 账号已变更，请重新启动此渠道。");
+          state.stickers.assertAccount(route.accountId, state.selfId);
           const args = params as {
             operation: string;
             ref?: string;
@@ -1924,7 +1964,13 @@ export function registerConversationTools(api: OpenClawPluginApi): void {
             if (args.operation === "delete") {
               const result = {
                 id: args.id,
-                deleted: state.stickers.delete(route.accountId, args.id),
+                deleted: await state.stickers.delete(
+                  route.accountId,
+                  state.selfId,
+                  args.id,
+                  state.transport,
+                  { signal, assertCurrent },
+                ),
               };
               return { content: [{ type: "text", text: JSON.stringify(result) }], details: result };
             }
@@ -1955,6 +2001,7 @@ export function registerConversationTools(api: OpenClawPluginApi): void {
           if (!resource) throw new Error("当前会话没有这个图片 ref。");
           const result = await state.stickers.saveReceived(
             route.accountId,
+            state.selfId,
             args.id,
             args.description,
             resource,

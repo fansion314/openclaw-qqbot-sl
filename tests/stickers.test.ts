@@ -1,9 +1,18 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { StickerStore, validateStickerId } from "../src/stickers.js";
+import { StickerStore, validateStickerId, type StickerTransport } from "../src/stickers.js";
 
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jS1cAAAAASUVORK5CYII=",
@@ -15,6 +24,9 @@ const gif = Buffer.from(
 );
 const roots: string[] = [];
 const stores: StickerStore[] = [];
+const sha = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
+const remoteId = (bytes: Buffer, selfId = "10001") =>
+  `${selfId}_0_0_0_${createHash("md5").update(bytes).digest("hex").toUpperCase()}_0_0`;
 function root() {
   const path = mkdtempSync(join(tmpdir(), "snowluma-stickers-"));
   roots.push(path);
@@ -25,163 +37,282 @@ function open(path = root()) {
   stores.push(store);
   return store;
 }
+function close(store: StickerStore) {
+  stores.splice(stores.indexOf(store), 1);
+  store.close();
+}
+function transport(selfId = "10001") {
+  const ids = new Set<string>();
+  return {
+    ids,
+    downloadMedia: vi.fn(async () => ({ buffer: gif, filename: "source.gif" })),
+    fetchCustomFaceIds: vi.fn(async () => [...ids]),
+    addCustomFace: vi.fn(async (bytes: Uint8Array) => {
+      const id = remoteId(Buffer.from(bytes), selfId);
+      ids.add(id);
+      return id;
+    }),
+    deleteCustomFace: vi.fn(async (id: string) => {
+      ids.delete(id);
+    }),
+  };
+}
+const media = { kind: "image", ref: "1:0", messageId: "1", file: "received-id" };
+function save(store: StickerStore, bot: StickerTransport, id = "好棒", description = "夸人和捧场") {
+  return store.saveReceived("bot", "10001", id, description, media, bot);
+}
+function seedLegacy(path: string, id: string, bytes = gif, accountId = "bot") {
+  const db = new DatabaseSync(join(path, "index.sqlite"));
+  db.exec(`CREATE TABLE IF NOT EXISTS stickers (
+    account_id TEXT NOT NULL, id TEXT NOT NULL, description TEXT NOT NULL,
+    hash TEXT NOT NULL, content_type TEXT NOT NULL, PRIMARY KEY(account_id, id)
+  )`);
+  db.prepare("INSERT INTO stickers VALUES (?, ?, ?, ?, ?)").run(
+    accountId,
+    id,
+    "旧说明",
+    sha(bytes),
+    "image/gif",
+  );
+  db.close();
+  const directory = join(path, sha(accountId));
+  mkdirSync(directory, { recursive: true });
+  const imagePath = join(directory, sha(bytes));
+  writeFileSync(imagePath, bytes);
+  return imagePath;
+}
 afterEach(() => {
   for (const store of stores.splice(0)) store.close();
   for (const path of roots.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
-describe("account sticker collection", () => {
-  it("persists image bytes and descriptions across restart with account isolation", () => {
+describe("QQ sticker aliases", () => {
+  it("stores readable names and QQ identities across restart without persisting new images", async () => {
     const path = root();
-    const first = open(path);
-    first.save("bot-a", "好棒", "夸人和捧场", gif, "image/gif");
-    first.close();
-    stores.pop();
+    const store = open(path);
+    const bot = transport();
+    expect(await save(store, bot)).toEqual({ id: "好棒", description: "夸人和捧场" });
+    expect(bot.addCustomFace).toHaveBeenCalledWith(
+      gif,
+      expect.stringMatching(/\.gif$/),
+      expect.anything(),
+    );
+    expect(readdirSync(path).every((name) => name.startsWith("index.sqlite"))).toBe(true);
+    close(store);
     const next = open(path);
-    expect(next.list("bot-a")).toEqual([{ id: "好棒", description: "夸人和捧场" }]);
-    expect(next.get("bot-a", "好棒").buffer).toEqual(gif);
-    expect(next.get("bot-a", "好棒").filename).toMatch(/\.gif$/);
-    expect(() => next.get("bot-a", "好棒", 1)).toThrow("byte limit");
-    expect(next.list("bot-b")).toEqual([]);
-    expect(next.has("bot-b", "好棒")).toBe(false);
-    expect(() => next.get("bot-b", "好棒")).toThrow("Unknown sticker ID");
+    expect(next.list("bot")).toEqual([{ id: "好棒", description: "夸人和捧场" }]);
+    expect(await next.resolveForSend("bot", "10001", "好棒", bot)).toBe(remoteId(gif));
+    expect(bot.addCustomFace).toHaveBeenCalledTimes(1);
+    expect(bot.fetchCustomFaceIds).toHaveBeenCalledTimes(1);
+    expect(next.list("other")).toEqual([]);
+    expect(next.has("other", "好棒")).toBe(false);
+    await expect(next.resolveForSend("other", "20002", "好棒", bot)).rejects.toThrow(
+      "Unknown sticker ID",
+    );
+    await expect(next.resolveForSend("bot", "20002", "好棒", bot)).rejects.toThrow(
+      "another QQ account",
+    );
   });
-  it("allows idempotent concurrent handles and rejects same-ID different images", () => {
+  it("serializes concurrent handles, deduplicates aliases, and retains the current description", async () => {
     const path = root();
     const a = open(path);
     const b = open(path);
-    const entry = a.save("bot", "好棒", "捧场", png, "image/png");
-    expect(b.save("bot", "好棒", "捧场", png, "image/png")).toEqual(entry);
-    expect(() => b.save("bot", "好棒", "另一张", gif, "image/gif")).toThrow("another image");
-    expect(a.get("bot", "好棒").buffer).toEqual(png);
-    expect(a.list("bot")).toHaveLength(1);
+    const bot = transport();
+    await Promise.all([save(a, bot), save(b, bot, "同图")]);
+    expect(bot.addCustomFace).toHaveBeenCalledTimes(1);
+    a.updateDescription("bot", "好棒", "新说明");
+    expect(await save(b, bot)).toEqual({ id: "好棒", description: "新说明" });
+    expect(a.list("bot")).toHaveLength(2);
+    bot.downloadMedia.mockResolvedValue({ buffer: png, filename: "different.png" });
+    await expect(save(b, bot)).rejects.toThrow("another image");
+    expect(bot.addCustomFace).toHaveBeenCalledTimes(1);
   });
-  it("updates an existing description and reclaims an image after the last scoped ID is deleted", () => {
+  it("migrates legacy files on first send and shares migration across aliases", async () => {
     const path = root();
-    const first = open(path);
-    const second = open(path);
-    first.save("bot", "好棒", "旧说明", png, "image/png");
-    first.save("bot", "同图", "另一用途", png, "image/png");
-    first.save("other", "好棒", "另一账号", png, "image/png");
-    expect(second.updateDescription("bot", "好棒", "新说明")).toEqual({
-      id: "好棒",
-      description: "新说明",
+    const file = seedLegacy(path, "好棒");
+    seedLegacy(path, "同图");
+    const store = open(path);
+    const bot = transport();
+    expect(store.list("bot")).toHaveLength(2);
+    expect(bot.addCustomFace).not.toHaveBeenCalled();
+    expect(await store.resolveForSend("bot", "10001", "好棒", bot)).toBe(remoteId(gif));
+    expect(readFileSync(file)).toEqual(gif);
+    expect(await store.resolveForSend("bot", "10001", "同图", bot)).toBe(remoteId(gif));
+    expect(bot.addCustomFace).toHaveBeenCalledTimes(1);
+    close(store);
+    expect(await open(path).resolveForSend("bot", "10001", "好棒", bot)).toBe(remoteId(gif));
+  });
+  it("rejects corrupt or oversized legacy images before adding a favorite", async () => {
+    const path = root();
+    const file = seedLegacy(path, "好棒");
+    const store = open(path);
+    const bot = transport();
+    await expect(
+      store.resolveForSend("bot", "10001", "好棒", bot, { maxBytes: 1 }),
+    ).rejects.toThrow("byte limit");
+    writeFileSync(file, png);
+    await expect(store.resolveForSend("bot", "10001", "好棒", bot)).rejects.toThrow("integrity");
+    expect(bot.addCustomFace).not.toHaveBeenCalled();
+  });
+  it("keeps legacy aliases and bytes when migration fails and reconciles a lost response on retry", async () => {
+    const path = root();
+    const file = seedLegacy(path, "好棒");
+    const store = open(path);
+    const bot = transport();
+    bot.addCustomFace.mockImplementationOnce(async () => {
+      bot.ids.add(remoteId(gif));
+      throw new Error("lost response");
     });
-    expect(first.save("bot", "好棒", "旧说明", png, "image/png").description).toBe("新说明");
-    expect(first.get("bot", "好棒").buffer).toEqual(png);
-    expect(first.list("other")).toEqual([{ id: "好棒", description: "另一账号" }]);
-    const imagePath = join(
-      path,
-      createHash("sha256").update("bot").digest("hex"),
-      createHash("sha256").update(png).digest("hex"),
+    await expect(store.resolveForSend("bot", "10001", "好棒", bot)).rejects.toThrow(
+      "lost response",
     );
-    expect(second.delete("bot", "好棒")).toBe(true);
-    expect(first.delete("bot", "好棒")).toBe(false);
-    expect(first.updateDescription("bot", "好棒", "不存在")).toBeUndefined();
-    expect(first.get("bot", "同图").buffer).toEqual(png);
-    expect(second.delete("bot", "同图")).toBe(true);
-    expect(existsSync(imagePath)).toBe(false);
-    expect(first.get("other", "好棒").buffer).toEqual(png);
-    first.save("bot", "好棒", "重新收藏", png, "image/png");
-    expect(second.get("bot", "好棒").buffer).toEqual(png);
+    expect(store.has("bot", "好棒")).toBe(true);
+    expect(existsSync(file)).toBe(true);
+    close(store);
+    expect(await open(path).resolveForSend("bot", "10001", "好棒", bot)).toBe(remoteId(gif));
+    expect(bot.addCustomFace).toHaveBeenCalledTimes(1);
   });
-  it("validates labels before accessing files and bounds descriptions", () => {
+  it("publishes no local alias for a failed new favorite and recovers it on explicit retry", async () => {
     const store = open();
-    expect(validateStickerId("猫猫_探头-2")).toBe("猫猫_探头-2");
-    for (const id of ["", "../secret", "two words", "a\n", "a".repeat(33), "<image>"])
-      expect(() => store.get("bot", id)).toThrow("Sticker ID");
-    expect(() => store.save("bot", "ok", " ", png, "image/png")).toThrow("description");
-    expect(() => store.save("bot", "ok", "x".repeat(257), png, "image/png")).toThrow("description");
+    const bot = transport();
+    bot.addCustomFace.mockImplementationOnce(async () => {
+      bot.ids.add(remoteId(gif));
+      throw new Error("lost response");
+    });
+    await expect(save(store, bot)).rejects.toThrow("lost response");
+    expect(store.list("bot")).toEqual([]);
+    await save(store, bot);
+    expect(store.has("bot", "好棒")).toBe(true);
+    expect(bot.addCustomFace).toHaveBeenCalledTimes(1);
   });
-  it("saves the selected ref's original GIF through the host loader without optimization", async () => {
+  it("restores an externally removed favorite when explicitly saved again", async () => {
     const store = open();
+    const bot = transport();
+    await save(store, bot);
+    bot.ids.clear();
+    await save(store, bot);
+    expect(bot.addCustomFace).toHaveBeenCalledTimes(2);
+    expect(bot.ids.has(remoteId(gif))).toBe(true);
+  });
+  it("deletes QQ favorites and retained legacy bytes only after the last alias", async () => {
+    const path = root();
+    const file = seedLegacy(path, "好棒");
+    seedLegacy(path, "同图");
+    const store = open(path);
+    const bot = transport();
+    await store.resolveForSend("bot", "10001", "好棒", bot);
+    expect(await store.delete("bot", "10001", "好棒", bot)).toBe(true);
+    expect(await store.delete("bot", "10001", "好棒", bot)).toBe(false);
+    expect(bot.deleteCustomFace).not.toHaveBeenCalled();
+    expect(existsSync(file)).toBe(true);
+    expect(await store.delete("bot", "10001", "同图", bot)).toBe(true);
+    expect(bot.deleteCustomFace).toHaveBeenCalledWith(remoteId(gif), expect.anything());
+    expect(existsSync(file)).toBe(false);
+    expect(store.list("bot")).toEqual([]);
+  });
+  it("preserves mappings on delete failure and reconciles an uncertain deletion on retry", async () => {
+    const store = open();
+    const bot = transport();
+    await save(store, bot);
+    bot.deleteCustomFace.mockImplementationOnce(async (id) => {
+      bot.ids.delete(id);
+      throw new Error("lost delete response");
+    });
+    await expect(store.delete("bot", "10001", "好棒", bot)).rejects.toThrow("lost delete response");
+    expect(store.has("bot", "好棒")).toBe(true);
+    expect(await store.delete("bot", "10001", "好棒", bot)).toBe(true);
+    expect(bot.deleteCustomFace).toHaveBeenCalledTimes(1);
+  });
+  it("removes unmigrated legacy records locally without adding a QQ favorite", async () => {
+    const path = root();
+    const file = seedLegacy(path, "好棒");
+    const store = open(path);
+    const bot = transport();
+    expect(await store.delete("bot", "10001", "好棒", bot)).toBe(true);
+    expect(existsSync(file)).toBe(false);
+    expect(bot.fetchCustomFaceIds).not.toHaveBeenCalled();
+    expect(bot.addCustomFace).not.toHaveBeenCalled();
+  });
+  it("preserves original GIF bytes through the host loader without optimization", async () => {
+    const store = open();
+    const bot = transport();
     const load = vi.fn(async () => ({
       buffer: gif,
       contentType: "image/gif",
       kind: "image" as const,
     }));
-    const transport = { downloadMedia: vi.fn() };
     await store.saveReceived(
       "bot",
+      "10001",
       "探头",
       "看看发生了什么",
       {
-        kind: "image",
-        ref: "-2:1",
-        messageId: "-2",
+        ...media,
         url: "https://example.com/second.gif",
       },
-      transport,
+      bot,
       { load },
     );
     expect(load).toHaveBeenCalledWith(
       "https://example.com/second.gif",
       expect.objectContaining({ optimizeImages: false }),
     );
-    expect(store.get("bot", "探头").buffer).toEqual(gif);
-    expect(transport.downloadMedia).not.toHaveBeenCalled();
+    expect(bot.addCustomFace).toHaveBeenCalledWith(gif, expect.anything(), expect.anything());
+    expect(bot.downloadMedia).not.toHaveBeenCalled();
   });
   it("uses retained server image IDs when CDN acquisition fails", async () => {
     const store = open();
+    const bot = transport();
     const load = vi.fn().mockRejectedValue(new Error("expired CDN URL"));
-    const transport = {
-      downloadMedia: vi.fn(async () => ({ buffer: png, filename: "original.png" })),
-    };
     await store.saveReceived(
       "bot",
+      "10001",
       "好棒",
       "捧场",
       {
-        kind: "image",
-        ref: "1:0",
-        messageId: "1",
+        ...media,
         url: "https://example.com/expired",
-        file: "received-id",
       },
-      transport,
+      bot,
       { load },
     );
-    expect(transport.downloadMedia).toHaveBeenCalledWith(
+    expect(bot.downloadMedia).toHaveBeenCalledWith(
       "received-id",
       expect.objectContaining({ kind: "image" }),
     );
-    expect(store.get("bot", "好棒").buffer).toEqual(png);
+    expect(bot.addCustomFace).toHaveBeenCalledWith(gif, expect.anything(), expect.anything());
   });
-  it("rejects non-images, excess bytes, disallowed URL schemes and cancellation before publication", async () => {
+  it("validates IDs, descriptions, media, size, URLs, and cancellation before remote publication", async () => {
     const store = open();
-    const media = { kind: "image", ref: "1:0", messageId: "1", url: "https://example.com/file" };
-    const transport = { downloadMedia: vi.fn() };
-    const load = vi.fn(async () => ({
-      buffer: Buffer.from("this is not an image"),
-      contentType: "image/png",
-      kind: "image" as const,
-    }));
+    const bot = transport();
+    expect(validateStickerId("猫猫_探头-2")).toBe("猫猫_探头-2");
+    for (const id of ["", "../secret", "two words", "a\n", "a".repeat(33), "<image>"])
+      expect(() => store.has("bot", id)).toThrow("Sticker ID");
+    await expect(save(store, bot, "ok", " ")).rejects.toThrow("description");
+    await expect(save(store, bot, "ok", "x".repeat(257))).rejects.toThrow("description");
+    bot.downloadMedia.mockResolvedValue({
+      buffer: Buffer.from("not an image"),
+      filename: "fake.png",
+    });
+    await expect(save(store, bot)).rejects.toThrow("not an image");
+    bot.downloadMedia.mockResolvedValue({ buffer: gif, filename: "original.gif" });
     await expect(
-      store.saveReceived("bot", "x", "说明", media, transport, { load }),
-    ).rejects.toThrow("not an image");
-    load.mockResolvedValue({ buffer: png, contentType: "image/png", kind: "image" });
-    await expect(
-      store.saveReceived("bot", "x", "说明", media, transport, { load, maxBytes: 1 }),
+      store.saveReceived("bot", "10001", "x", "说明", media, bot, { maxBytes: 1 }),
     ).rejects.toThrow("byte limit");
     await expect(
-      store.saveReceived("bot", "x", "说明", { ...media, url: "file:///etc/passwd" }, transport, {
-        load,
-      }),
+      store.saveReceived("bot", "10001", "x", "说明", { ...media, url: "file:///etc/passwd" }, bot),
     ).rejects.toThrow("URL");
     await expect(
-      store.saveReceived("bot", "x", "说明", media, transport, {
-        load,
-        signal: AbortSignal.abort(),
-      }),
+      store.saveReceived("bot", "10001", "x", "说明", media, bot, { signal: AbortSignal.abort() }),
     ).rejects.toThrow();
     await expect(
-      store.saveReceived("bot", "x", "说明", media, transport, {
-        load,
+      store.saveReceived("bot", "10001", "x", "说明", media, bot, {
         assertCurrent: () => {
           throw new Error("obsolete turn");
         },
       }),
     ).rejects.toThrow("obsolete turn");
     expect(store.list("bot")).toEqual([]);
+    expect(bot.addCustomFace).not.toHaveBeenCalled();
   });
 });

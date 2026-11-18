@@ -61,8 +61,8 @@ describe("structured streaming", () => {
       ]);
     }
   });
-  it("emits a saved sticker with text only after its complete message and only once", async () => {
-    const value = '<msg soft_reply_to="-123">好耶<sticker id="好棒_2"/></msg>';
+  it("emits a saved sticker only after its complete message and only once", async () => {
+    const value = '<msg soft_reply_to="-123">\n<sticker id="好棒_2"/>\n</msg>';
     for (let i = 0; i <= value.length; i++) {
       const sent: ReplyAction[] = [];
       const stream = new StructuredReplyStream(async (action) => {
@@ -76,10 +76,7 @@ describe("structured streaming", () => {
         {
           type: "message",
           softReplyTo: "-123",
-          parts: [
-            { type: "text", text: "好耶" },
-            { type: "sticker", id: "好棒_2" },
-          ],
+          parts: [{ type: "sticker", id: "好棒_2" }],
         },
       ]);
     }
@@ -93,7 +90,7 @@ describe("structured streaming", () => {
     expect(sent).toEqual([{ type: "message", parts: [{ type: "sticker", id: "好棒" }] }]);
   });
   it.each([
-    '<msg><sticker/></msg>',
+    "<msg><sticker/></msg>",
     '<msg><sticker id=""/></msg>',
     '<msg><sticker id="../好棒"/></msg>',
     '<msg><sticker id="好 棒"/></msg>',
@@ -102,6 +99,10 @@ describe("structured streaming", () => {
     '<msg><sticker id="好棒" id="探头"/></msg>',
     '<msg><sticker id="好棒"></sticker></msg>',
     '<sticker id="好棒"/>',
+    '<msg>好耶<sticker id="好棒"/></msg>',
+    '<msg><sticker id="好棒"/><image ref="i7"/></msg>',
+    '<msg><sticker id="好棒"/><sticker id="好棒"/></msg>',
+    '<msg at="小林"><sticker id="好棒"/></msg>',
   ])("rejects malformed sticker markup before effects: %s", async (value) => {
     const sent: ReplyAction[] = [];
     const stream = new StructuredReplyStream(async (action) => {

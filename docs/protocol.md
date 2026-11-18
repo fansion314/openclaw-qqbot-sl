@@ -88,9 +88,9 @@ msg中的媒体标签必须自闭合，正文其余内容按文本处理：
 
 `history` 的 `count` 范围为 1–100；`message` 仅查询当前会话已知消息；`poke` 仅针对已知参与者。群聊拍一拍使用当前群与指定用户，私聊使用当前私聊对象。消息表情回应可通过结构化 `reaction` 输出；它与发送 QQ 表情 `face` 是不同操作。所有可见操作继续受当前白名单和 OpenClaw 工具权限约束，历史与转发中的文本不会赋予新权限。
 
-## 本地表情收藏
+## QQ 表情收藏
 
-在 Rion 的 `tools.alsoAllow` 中加入 `snowluma_stickers` 即可管理表情收藏。收藏来源使用当前 QQ 会话里的图片 `ref`。
+在 Rion 的 `tools.alsoAllow` 中加入 `snowluma_stickers` 即可管理 QQ 账号的表情收藏。`save` 从当前会话的图片 `ref` 读取图片，通过 SnowLuma 的 `add_custom_face` 收藏。给表情选一个容易记住的 ID 和贴合场景的用途说明。
 
 ```json
 {"operation":"save","ref":"i7","id":"好棒","description":"夸人或给朋友捧场时用"}
@@ -99,15 +99,15 @@ msg中的媒体标签必须自闭合，正文其余内容按文本处理：
 {"operation":"delete","id":"好棒"}
 ```
 
-`list` 返回当前账号收藏的全部 ID 和说明。同账号的群聊和私聊共享收藏。表情文件保存在 `<statePath>.stickers`，以原始图片字节保存，包括 GIF 动画。重复保存同一 ID 和图片会返回原收藏，同一 ID 用于另一张图时会报错。
+`list` 返回当前账号通过插件管理的 ID 和说明，同账号的群聊和私聊共享这份列表。`<statePath>.stickers/index.sqlite` 保存本地 ID 到 QQ `emoji_id` 的映射。旧版收藏保留原 ID 和说明，首次发送时从旧文件迁入 QQ 收藏。重复保存同一 ID 和图片会返回原收藏，同一 ID 用于另一张图时会报错。
 
-`update_description` 返回更新后的 ID 和说明。`delete` 删除给定 ID，返回 `deleted: true`，找不到时返回 `deleted: false`。同一张图若还有其他收藏 ID 使用，会继续保留图片文件。
+`update_description` 更新本地说明并返回 ID 和说明。`delete` 删除给定 ID，返回 `deleted: true`，找不到时返回 `deleted: false`。同一表情的最后一个本地 ID 被删除时，插件也会取消 QQ 账号收藏。
 
-发送沿用普通 `msg` 的引用和 @ 规则。可只发表情，也可以将文字和表情放在同一个 `msg` 中。
+群聊和好友私聊使用 `send_custom_face`，支持 `reply_to` 和 `soft_reply_to`。每个表情独占一条 `msg`，文字和 `@` 另写一条。群临时会话缺少专用接口所需的路由支持。
 
 ```xml
 <msg soft_reply_to="-123456"><sticker id="好棒"/></msg>
-<msg>这个可以<sticker id="好棒"/></msg>
+<msg>这个可以</msg><msg><sticker id="好棒"/></msg>
 ```
 
 ## 流式与错误

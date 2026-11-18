@@ -15,7 +15,7 @@ pnpm install --frozen-lockfile --ignore-scripts
 pnpm check
 pnpm pack
 # 在运行 OpenClaw 的主机安装生成的包：
-openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.10.tgz
+openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.11.tgz
 ```
 
 本地开发可在构建后使用 `openclaw plugins install --link .`。安装包包含已编译 JavaScript，不依赖主机即时编译 TypeScript。

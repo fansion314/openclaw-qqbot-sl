@@ -72,6 +72,15 @@ export interface MessageSendOptions extends SendGuardOptions {
   prepare?: (segments: OneBotSegment[]) => OneBotSegment[] | Promise<OneBotSegment[]>;
 }
 
+export interface StickerRequestOptions extends SendGuardOptions {
+  signal?: AbortSignal;
+}
+
+export interface CustomFaceSendOptions extends StickerRequestOptions {
+  /** Resolve a conditional quote after pacing, immediately before native I/O. */
+  prepareReplyTo?: () => string | undefined | Promise<string | undefined>;
+}
+
 function validateSend(target: OneBotTarget, segments: OneBotSegment[]): void {
   if (!segments.length) throw new Error("Cannot send an empty message");
   const allowed = new Set(["text", "at", "reply", "face", "image", "record", "video"]);
@@ -105,6 +114,7 @@ export class OneBotTransport {
   private readonly client: SnowLumaWebSocketClient;
   private readonly listeners = new Set<(event: OneBotEvent) => void>();
   private loginInfo?: LoginInfo;
+  private stickerSelfId?: number;
   private verification?: Promise<LoginInfo>;
   private generation = 0;
   private buffered: OneBotEvent[] = [];
@@ -175,6 +185,7 @@ export class OneBotTransport {
         throw new Error("SnowLuma account does not match expectedSelfId");
       }
       this.loginInfo = login;
+      this.stickerSelfId ??= login.user_id;
       this.status(true);
       const pending = this.buffered;
       this.buffered = [];
@@ -219,6 +230,26 @@ export class OneBotTransport {
     } catch (error) {
       throw this.safeError(error);
     }
+  }
+  private stickerGuard(options: StickerRequestOptions): () => void {
+    const selfId = this.loginInfo?.user_id;
+    const generation = this.generation;
+    const assertCurrent = () => {
+      options.signal?.throwIfAborted();
+      options.assertCurrent?.();
+      if (this.closed || !selfId || !this.client.isConnected || !this.loginInfo)
+        throw new Error("SnowLuma is not connected and verified");
+      if (
+        this.generation !== generation ||
+        this.loginInfo.user_id !== selfId ||
+        selfId !== this.stickerSelfId
+      )
+        throw new SendCancelledError(
+          "SnowLuma account connection changed during sticker operation",
+        );
+    };
+    assertCurrent();
+    return assertCurrent;
   }
   async connect(): Promise<LoginInfo> {
     this.closed = false;
@@ -332,6 +363,84 @@ export class OneBotTransport {
                 { signal: options.signal },
               ),
         );
+      },
+      options.signal,
+    );
+  }
+  async addCustomFace(
+    bytes: Uint8Array,
+    filename: string,
+    options: UploadOptions & SendGuardOptions = {},
+  ): Promise<string> {
+    const assertCurrent = this.stickerGuard(options);
+    if (!bytes.byteLength) throw new Error("Sticker image is empty");
+    const file = await this.uploadBytes(bytes, filename, options);
+    assertCurrent();
+    const result = await this.operation(() =>
+      this.client.raw("add_custom_face", { file }, { signal: options.signal }),
+    );
+    // Keep a confirmed mutation available to the local index even if the turn ended.
+    if (typeof result?.emoji_id !== "string" || !result.emoji_id.trim())
+      throw new Error("SnowLuma returned an invalid saved sticker identity");
+    return result.emoji_id;
+  }
+  async fetchCustomFaceIds(options: StickerRequestOptions = {}): Promise<string[]> {
+    const assertCurrent = this.stickerGuard(options);
+    const result = await this.operation(() =>
+      this.client.raw(
+        "fetch_custom_face",
+        { return_type: "id", count: 2_147_483_647 },
+        { signal: options.signal },
+      ),
+    );
+    assertCurrent();
+    if (!Array.isArray(result) || result.some((id) => typeof id !== "string" || !id.trim()))
+      throw new Error("SnowLuma returned an invalid saved sticker list");
+    return result;
+  }
+  async deleteCustomFace(emojiId: string, options: StickerRequestOptions = {}): Promise<void> {
+    this.stickerGuard(options);
+    if (!emojiId.trim()) throw new Error("Sticker identity is required");
+    await this.operation(() =>
+      this.client.raw("delete_custom_face", { emoji_id: emojiId }, { signal: options.signal }),
+    );
+  }
+  async sendCustomFace(
+    target: OneBotTarget,
+    emojiId: string,
+    options: CustomFaceSendOptions = {},
+  ): Promise<{ message_id: number }> {
+    if (target.kind === "private" && target.groupId)
+      throw new Error("SnowLuma v2.3.4 的表情发送接口不支持群临时会话。");
+    const destination = positiveId(target.id);
+    if (!emojiId.trim()) throw new Error("Sticker identity is required");
+    const assertCurrent = this.stickerGuard(options);
+    return this.sendQueue.enqueue(
+      "",
+      async () => {
+        assertCurrent();
+        const replyTo = await options.prepareReplyTo?.();
+        assertCurrent();
+        try {
+          return await this.operation(() =>
+            this.client.raw(
+              "send_custom_face",
+              {
+                emoji_id: emojiId,
+                ...(target.kind === "group" ? { group_id: destination } : { user_id: destination }),
+                ...(replyTo !== undefined ? { reply_to: messageId(replyTo) } : {}),
+              },
+              { signal: options.signal },
+            ),
+          );
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === "custom face is not in the saved sticker list"
+          )
+            throw new Error("QQ 收藏中已没有这个表情，请使用图片 ref 重新收藏后发送。");
+          throw error;
+        }
       },
       options.signal,
     );

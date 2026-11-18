@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/channel-core";
-import type { OneBotEvent, OneBotSegment } from "../src/onebot.js";
+import type { OneBotEvent, OneBotSegment, OneBotTarget } from "../src/onebot.js";
 import { EventStore } from "../src/store.js";
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   inboundImages: vi.fn(async (..._args: unknown[]) => [] as unknown[]),
   stageImage: vi.fn(async (..._args: unknown[]) => ({ path: "/host/media/inbound/qq-image.gif" })),
 }));
+type StickerSend = { target: OneBotTarget; emojiId: string; replyTo?: string };
 vi.mock("../src/inbound-images.js", () => ({
   prepareInboundImages: (...args: unknown[]) => mocks.inboundImages(...args),
   stageInboundImage: (...args: unknown[]) => mocks.stageImage(...args),
@@ -23,6 +25,11 @@ vi.mock("../src/onebot.js", () => ({
     handler?: (event: OneBotEvent) => void;
     sends: OneBotSegment[][] = [];
     uploads: Uint8Array[] = [];
+    customFaces = new Set<string>();
+    stickerUploads: Uint8Array[] = [];
+    stickerSends: StickerSend[] = [];
+    deletedFaces: string[] = [];
+    dispatchOrder: string[] = [];
     downloads = new Map<string, Buffer>();
     reactions: unknown[][] = [];
     pokes: unknown[][] = [];
@@ -43,6 +50,9 @@ vi.mock("../src/onebot.js", () => ({
       };
     }
     async connect() {
+      return { user_id: 10002, nickname: "Bot" };
+    }
+    async login() {
       return { user_id: 10002, nickname: "Bot" };
     }
     close() {
@@ -68,7 +78,35 @@ vi.mock("../src/onebot.js", () => ({
       const prepared = options.prepare ? await options.prepare(parts) : parts;
       options.assertCurrent?.();
       this.sends.push(prepared);
-      return { message_id: -900 - this.sends.length };
+      this.dispatchOrder.push("message");
+      return { message_id: -900 - this.dispatchOrder.length };
+    }
+    async sendCustomFace(
+      target: OneBotTarget,
+      emojiId: string,
+      options: { assertCurrent?: () => void; prepareReplyTo?: () => string | undefined },
+    ) {
+      await this.beforeSend?.();
+      options.assertCurrent?.();
+      const replyTo = options.prepareReplyTo?.();
+      if (!this.customFaces.has(emojiId)) throw new Error("表情已从 QQ 收藏移除");
+      this.stickerSends.push({ target, emojiId, replyTo });
+      this.dispatchOrder.push("sticker");
+      return { message_id: -900 - this.dispatchOrder.length };
+    }
+    async addCustomFace(bytes: Uint8Array) {
+      const md5 = createHash("md5").update(bytes).digest("hex").toUpperCase();
+      const emojiId = `10002_0_0_0_${md5}_0_0`;
+      this.customFaces.add(emojiId);
+      this.stickerUploads.push(bytes);
+      return emojiId;
+    }
+    async fetchCustomFaceIds() {
+      return [...this.customFaces];
+    }
+    async deleteCustomFace(emojiId: string) {
+      this.customFaces.delete(emojiId);
+      this.deletedFaces.push(emojiId);
     }
     async directory() {
       return [];
@@ -110,6 +148,10 @@ type Bot = {
   handler?: (event: OneBotEvent) => void;
   sends: OneBotSegment[][];
   uploads: Uint8Array[];
+  stickerUploads: Uint8Array[];
+  stickerSends: StickerSend[];
+  deletedFaces: string[];
+  dispatchOrder: string[];
   downloads: Map<string, Buffer>;
   reactions: unknown[][];
   pokes: unknown[][];
@@ -346,7 +388,7 @@ describe("channel orchestration with injected host and transport", () => {
     expect(Buffer.from(f.bot.uploads[0]!).subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
     expect(f.errors).toEqual([]);
   });
-  it("saves the selected received image and streams it once from another conversation", async () => {
+  it("saves a QQ favorite and sends it through the sticker API from either conversation", async () => {
     type StickerTool = { execute(id: string, params: unknown): Promise<{ details: unknown }> };
     let createStickerTool!: (ctx: Record<string, unknown>) => StickerTool | null;
     registerConversationTools({
@@ -376,7 +418,30 @@ describe("channel orchestration with injected host and transport", () => {
         expect(body).toContain('<img ref="i1"/>');
         expect(body).toContain('<img ref="i2"/>');
         expect((await tool.execute("save", save)).details).toEqual(entry);
-        await replyOptions.onPartialReply({ text: "<no-reply/>" });
+        await expect(
+          snowlumaPlugin.outbound!.sendText!({
+            cfg: f.cfg,
+            accountId: "default",
+            to: "qq-snowluma:private:10001:20001",
+            sessionKey,
+            text: '<msg><sticker id="好棒"/></msg>',
+          } as Parameters<NonNullable<NonNullable<typeof snowlumaPlugin.outbound>["sendText"]>>[0]),
+        ).rejects.toThrow("群临时会话无法发送 QQ 收藏表情");
+        f.bot.beforeSend = async () => {
+          f.bot.beforeSend = undefined;
+          const store = new EventStore(f.statePath);
+          try {
+            const target = store
+              .select("default", '["default","group","20001",""]', 50, true)
+              .events.find((event) => event.id === "-123")!;
+            store.add({ ...target, id: "-125", time: target.time + 1000, body: "补充一句" });
+          } finally {
+            store.close();
+          }
+        };
+        await replyOptions.onPartialReply({
+          text: '<msg soft_reply_to="-123"><sticker id="好棒"/></msg>',
+        });
         saved = true;
         return;
       }
@@ -390,8 +455,8 @@ describe("channel orchestration with injected host and transport", () => {
       expect((await tool.execute("list-updated", { operation: "list" })).details).toEqual([
         updated,
       ]);
-      const text = '<msg>给你<sticker id="好棒"/></msg>';
-      await replyOptions.onPartialReply({ text: text.slice(0, 19) });
+      const text = '<msg>给你</msg><msg reply_to="-124"><sticker id="好棒"/></msg>';
+      await replyOptions.onPartialReply({ text: text.slice(0, -7) });
       await replyOptions.onPartialReply({ text });
       await dispatcherOptions.deliver({ text });
       const remove = { operation: "delete", id: entry.id };
@@ -422,13 +487,17 @@ describe("channel orchestration with injected host and transport", () => {
     await vi.waitFor(() => expect(deleted).toBe(true));
     await f.stop();
     expect(f.errors).toEqual([]);
-    expect(f.bot.uploads).toEqual([gif]);
-    expect(f.bot.sends).toEqual([
-      [
-        { type: "text", data: { text: "给你" } },
-        { type: "image", data: { file: "/snowluma/upload/authorized" } },
-      ],
+    expect(f.bot.uploads).toEqual([]);
+    expect(f.bot.stickerUploads).toEqual([gif]);
+    const md5 = createHash("md5").update(gif).digest("hex").toUpperCase();
+    const emojiId = `10002_0_0_0_${md5}_0_0`;
+    expect(f.bot.stickerSends).toEqual([
+      { target: { kind: "group", id: "20001" }, emojiId, replyTo: "-123" },
+      { target: { kind: "private", id: "10001" }, emojiId, replyTo: "-124" },
     ]);
+    expect(f.bot.dispatchOrder).toEqual(["sticker", "message", "sticker"]);
+    expect(f.bot.sends).toEqual([[{ type: "text", data: { text: "给你" } }]]);
+    expect(f.bot.deletedFaces).toEqual([emojiId]);
   });
   it("tells the agent about unknown sticker IDs before any send occurs", async () => {
     let runs = 0;

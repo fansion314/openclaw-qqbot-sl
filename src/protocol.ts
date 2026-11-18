@@ -115,10 +115,7 @@ function parts(body: string): ReplyPart[] {
     if (!tag)
       throw new ProtocolError("Only self-closing media/face/sticker tags are allowed inside msg");
     const type = tag[1] === "audio" ? "record" : tag[1];
-    const a = attrs(
-      tag[2],
-      ["face", "sticker"].includes(type) ? ["id"] : ["ref", "src", "name"],
-    );
+    const a = attrs(tag[2], ["face", "sticker"].includes(type) ? ["id"] : ["ref", "src", "name"]);
     if (type === "face") {
       if (!/^\d+$/.test(a.id ?? "")) throw new ProtocolError("Invalid face ID");
       result.push({ type, id: a.id });
@@ -253,9 +250,15 @@ export class StructuredReplyStream {
         const body = rest.slice(open[0].length, end);
         if (body.length > (this.options.maxMessageChars ?? 5000))
           throw new ProtocolError("Message length limit exceeded");
+        let messageParts = parts(body);
+        if (messageParts.some((part) => part.type === "sticker")) {
+          messageParts = messageParts.filter((part) => part.type !== "text" || part.text.trim());
+          if (messageParts.length !== 1 || a.at !== undefined)
+            throw new ProtocolError("每条表情须单独放在一个 <msg>。文字和 @ 请另发一条。");
+        }
         const action: ReplyAction = {
           type: "message",
-          parts: parts(body),
+          parts: messageParts,
           ...(a.reply_to !== undefined ? { replyTo: messageId(a.reply_to) } : {}),
           ...(a.soft_reply_to !== undefined ? { softReplyTo: messageId(a.soft_reply_to) } : {}),
           ...(a.at !== undefined ? { at: userId(a.at) } : {}),
