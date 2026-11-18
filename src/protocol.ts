@@ -1,7 +1,10 @@
+import { validateStickerId } from "./sticker-id.js";
+
 /** Model output is data: only complete, validated blocks may cause effects. */
 export type ReplyPart =
   | { type: "text"; text: string }
   | { type: "face"; id: string }
+  | { type: "sticker"; id: string }
   | { type: "image" | "record" | "video" | "file"; ref?: string; src?: string; name?: string };
 export type ReplyAction =
   | { type: "message"; replyTo?: string; softReplyTo?: string; at?: string; parts: ReplyPart[] }
@@ -20,7 +23,7 @@ export function escapeXml(value: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 }
-function decode(value: string): string {
+export function decodeXml(value: string): string {
   if (/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[\da-fA-F]+;)/.test(value))
     throw new ProtocolError("Invalid XML entity");
   return value.replace(/&(amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);/g, (_, entity: string) => {
@@ -48,7 +51,7 @@ function attrs(source: string, allowed: string[]): Record<string, string> {
       throw new ProtocolError("Invalid or duplicate attribute");
     const value = match[2] ?? match[3];
     if (value.includes("<")) throw new ProtocolError("Unescaped attribute");
-    result[match[1]] = decode(value);
+    result[match[1]] = decodeXml(value);
     rest = rest.slice(match[0].length);
   }
   return result;
@@ -96,7 +99,7 @@ function parts(body: string): ReplyPart[] {
     const index = rest.indexOf("<");
     if (index !== 0) {
       const end = index < 0 ? rest.length : index;
-      result.push({ type: "text", text: decode(rest.slice(0, end)) });
+      result.push({ type: "text", text: decodeXml(rest.slice(0, end)) });
       rest = rest.slice(end);
       continue;
     }
@@ -107,13 +110,24 @@ function parts(body: string): ReplyPart[] {
       rest = rest.slice(1);
       continue;
     }
-    const tag = /^<(image|record|audio|video|file|face)((?:[^>"']|"[^"]*"|'[^']*')*)\/>/.exec(rest);
-    if (!tag) throw new ProtocolError("Only self-closing media/face tags are allowed inside msg");
+    const tag =
+      /^<(image|record|audio|video|file|face|sticker)((?:[^>"']|"[^"]*"|'[^']*')*)\/>/.exec(rest);
+    if (!tag)
+      throw new ProtocolError("Only self-closing media/face/sticker tags are allowed inside msg");
     const type = tag[1] === "audio" ? "record" : tag[1];
-    const a = attrs(tag[2], type === "face" ? ["id"] : ["ref", "src", "name"]);
+    const a = attrs(
+      tag[2],
+      ["face", "sticker"].includes(type) ? ["id"] : ["ref", "src", "name"],
+    );
     if (type === "face") {
       if (!/^\d+$/.test(a.id ?? "")) throw new ProtocolError("Invalid face ID");
       result.push({ type, id: a.id });
+    } else if (type === "sticker") {
+      try {
+        result.push({ type, id: validateStickerId(a.id ?? "") });
+      } catch {
+        throw new ProtocolError("Invalid sticker ID");
+      }
     } else {
       if (Boolean(a.ref) === Boolean(a.src))
         throw new ProtocolError("Media requires exactly one ref or src");

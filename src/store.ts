@@ -1,6 +1,12 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import type { InboundMedia } from "./inbound.js";
+
+/** Canonical aliases use a positive lowercase base36 sequence without leading zeroes. */
+export function isShortImageRef(value: string): boolean {
+  return /^i[1-9a-z][0-9a-z]*$/.test(value);
+}
 
 export interface StoredEvent {
   /** Set only after a live native command passes host authorization. */
@@ -127,6 +133,14 @@ export class EventStore {
         account_id TEXT NOT NULL, session_id TEXT NOT NULL, user_id TEXT NOT NULL,
         profile TEXT NOT NULL, PRIMARY KEY(account_id,session_id,user_id)
       );
+      CREATE TABLE IF NOT EXISTS image_references (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id TEXT NOT NULL, conversation_key TEXT NOT NULL,
+        original_ref TEXT NOT NULL, media TEXT NOT NULL, expires_at INTEGER NOT NULL,
+        UNIQUE(account_id,conversation_key,original_ref)
+      );
+      CREATE INDEX IF NOT EXISTS image_references_expiry
+        ON image_references(account_id,conversation_key,expires_at);
     `);
     // Persist sender direction separately so retention can remove a body without
     // turning a self-authored message into a model-facing gap.
@@ -156,6 +170,71 @@ export class EventStore {
       if (!batchColumns.some((entry) => entry.name === column))
         this.db.exec(`ALTER TABLE batches ADD COLUMN ${column} ${type}`);
     }
+  }
+
+  /** Aliases retain resource provenance independently of the bounded event cache. */
+  imageReference(
+    accountId: string,
+    conversationKey: string,
+    image: InboundMedia,
+    now = Date.now(),
+  ): string {
+    if (image.kind !== "image" || !image.ref) throw new Error("Image resource reference required");
+    const data = JSON.stringify(image);
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      this.pruneImageReferences(accountId, conversationKey, now);
+      const existing = this.db.prepare(`SELECT seq FROM image_references
+        WHERE account_id=? AND conversation_key=? AND original_ref=?`);
+      existing.setReadBigInts(true);
+      const row = existing.get(accountId, conversationKey, image.ref) as
+        | { seq: bigint }
+        | undefined;
+      let seq: bigint;
+      if (row) {
+        seq = row.seq;
+        this.db
+          .prepare(`UPDATE image_references SET media=?,expires_at=? WHERE seq=?`)
+          .run(data, now + this.retentionMs, seq);
+      } else {
+        const insert = this.db.prepare(`INSERT INTO image_references
+          (account_id,conversation_key,original_ref,media,expires_at) VALUES (?,?,?,?,?)`);
+        insert.setReadBigInts(true);
+        seq = BigInt(
+          insert.run(accountId, conversationKey, image.ref, data, now + this.retentionMs)
+            .lastInsertRowid,
+        );
+      }
+      this.db.exec("COMMIT");
+      return `i${seq.toString(36)}`;
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  resolveImageReference(
+    accountId: string,
+    conversationKey: string,
+    alias: string,
+    now = Date.now(),
+  ): InboundMedia | undefined {
+    if (!isShortImageRef(alias) || alias.length > 14) return;
+    let seq = 0n;
+    for (const digit of alias.slice(1)) seq = seq * 36n + BigInt(Number.parseInt(digit, 36));
+    if (seq > 9223372036854775807n) return;
+    const row = this.db
+      .prepare(`SELECT media FROM image_references
+      WHERE seq=? AND account_id=? AND conversation_key=? AND expires_at>?`)
+      .get(seq, accountId, conversationKey, now) as { media: string } | undefined;
+    return row ? (JSON.parse(row.media) as InboundMedia) : undefined;
+  }
+
+  private pruneImageReferences(accountId: string, conversationKey: string, now: number): void {
+    this.db
+      .prepare(`DELETE FROM image_references
+      WHERE account_id=? AND conversation_key=? AND expires_at<=?`)
+      .run(accountId, conversationKey, now);
   }
 
   add(event: StoredEvent, now = Date.now()): boolean {
@@ -207,6 +286,7 @@ export class EventStore {
   }
 
   private pruneConversation(accountId: string, key: string, now: number): void {
+    this.pruneImageReferences(accountId, key, now);
     // Retain identity rows for pending expired bodies so the next batch exposes its gap.
     this.db
       .prepare(`UPDATE events SET event=NULL WHERE account_id=? AND conversation_key=?

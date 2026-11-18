@@ -15,7 +15,7 @@ pnpm install --frozen-lockfile --ignore-scripts
 pnpm check
 pnpm pack
 # 在运行 OpenClaw 的主机安装生成的包：
-openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.7.tgz
+openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.9.tgz
 ```
 
 本地开发可在构建后使用 `openclaw plugins install --link .`。安装包包含已编译 JavaScript，不依赖主机即时编译 TypeScript。
@@ -90,7 +90,7 @@ WebUI以XML代码块保留换行，每条msg的标签和正文分行。`history`
 
 空history/current分区省略，批次尾部只保留“仅必要时简短回复。”。系统提示强调默认一条、5—20字，确有必要才追加，不将长段复述当日常聊天。
 
-图片属性提供28字符的 `qqimg:` 短引用，原始带签名URL保存在插件SQLite映射，不进入消息正文。旧HTTP短链服务只监听回环地址，随机128位标识、7天有效期、最多10000条。`view_image(path/paths)` 调用前只还原当前rion会话对应的图片参数，之后仍经过宿主网络检查；不放宽全局SSRF策略。引用和转发中的图片也缩短；资源ref仍可用于原样重发。
+图片以 `<img ref="i7" summary="[图片]"/>` 显示，引用和转发内的图片使用同样的格式。插件在本地保存来源映射。`view_image(path="i7")`、收藏表情和 `<image ref="i7"/>` 重发使用同一个引用。
 
 ## 持久用户名字
 
@@ -98,7 +98,7 @@ WebUI以XML代码块保留换行，每条msg的标签和正文分行。`history`
 
 ## 多模态与self（0.1.3）
 
-机器人在输入头、@、引用和通知内统一表示为self，内部仍绑定当前QQ账号。图片正文只包含ref、必要元数据和28字符的qqimg:引用，不再展示原始file标识；旧HTTP短链继续支持。当前OpenClaw图片工具是view_image(path/paths)，插件会按当前rion会话还原短引用再经过宿主网络检查。
+机器人在 @、引用和通知内用 `self` 表示，内部绑定当前 QQ 账号。手动看图时，插件按当前 Rion 会话解析图片引用。原始 URL 由宿主检查，仅有服务端文件标识的图片由插件下载到宿主媒体目录。
 
 当前触发消息中的图片会经受限下载保存到OpenClaw媒体目录，再以真实附件path提供给多模态模型，默认最多4张、每张10MiB、每轮总20MiB。历史图片保留短引用按需读取。下载失败不会中断文字对话；不会声称未成功下载的图片已经被识别。
 

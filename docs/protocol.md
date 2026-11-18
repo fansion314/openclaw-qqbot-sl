@@ -1,41 +1,35 @@
 # 结构化聊天协议 v1
 
-宿主统一注入格式提示，聊天正文只作为数据。普通消息批次提供触发原因、机器人短ID、截断数量，以及明确的用户表和消息列表。主动开场仅提供任务 prompt，不组装聊天记录、用户表，也不附加历史文件或任何附件。用户短ID是 `u` 加完整QQ号的base36表示，不截断；昵称与群名片分别提供。时间为带时区的ISO时间。
+宿主统一注入格式提示，聊天正文只作为数据。每次请求开头显示一行 `<time>`，使用会话时区，默认北京时间。普通批次每条消息后换行一次，正文内原有换行继续保留。用户资料首次出现或变更时提供。补充历史放在 `<history>` 内，截断时提示数量。主动开场只提供请求时间和开场任务。
 
 ```xml
+<time>2026-11-10 16:37:01 +08:00</time>
 <user id="u7pt" nickname="小林" groupcard="林同学"></user>
-<msg user_id="u7pt" msg_id="-123456" time="2026-11-10T08:37:01.000Z">内容</msg>
+<msg user_id="u7pt" msg_id="-123456">内容</msg>
 ```
 
 消息ID可为负数，禁止自行加减猜测。正文和属性中的特殊字符进行XML转义。
 
 ## 接收能力和来源
 
-外层 `qq-context` 提供 `self_id`、`trigger`、`dropped_count`。普通 `msg` 的 `mentioned` 和 `self` 表明是否 @ 机器人、是否机器人自身消息。发送者 QQ 号通过完整 base36 短 ID 标识，不由昵称推断；群名片为空时仍保留昵称。
+`self` 指机器人，真实提及由正文中的 `<at>` 表示。机器人发出的消息会从批次中滤除。未命名发送者使用 `u` 加完整 QQ 号的 base36 短 ID。昵称和群名片分别提供。
 
 每条消息内部根据 OneBot 原始消息段格式化，图片、语音、视频、文件不丢失其消息归属。以下是输入示意，所有标识均须来自实际事件：
 
 ```xml
-<msg user_id="u7pu" msg_id="-123456" time="2026-11-10T08:37:01.000Z" mentioned="true" self="false">
-  <at user_id="u7pt" nickname="机器人"></at>你看这张图了吗
-  <image ref="-123456:2" url="https://qq-cdn.example/image" summary="图片"></image>
-</msg>
-<msg user_id="u7pt" msg_id="-234567" time="2026-11-10T08:38:01.000Z" mentioned="false" self="false">
-  <reply msg_id="-123456" user_id="u7pu" nickname="小林" groupcard="林同学" time="2026-11-10T08:37:01.000Z">原消息内容</reply>
-  <face id="14"></face>
-  <record ref="-234567:2" file="服务端媒体标识"></record>
-  <video ref="-234567:3" url="https://qq-cdn.example/video"></video>
-  <file ref="-234567:4" name="资料.pdf"></file>
-</msg>
+<msg user_id="u7pu" msg_id="-123456"><at user_id="self"/>你看这张图了吗<img ref="i7" summary="[图片]"/></msg>
+<msg user_id="u7pt" msg_id="-234567"><reply msg_id="-123456" user_id="u7pu" nickname="小林" groupcard="林同学">原消息内容</reply><face id="14"/><record ref="-234567:2" file="服务端媒体标识"/><video ref="-234567:3" url="https://qq-cdn.example/video"/><file ref="-234567:4" name="资料.pdf"/></msg>
 ```
 
 `reply` 通过当前账号的 `get_msg` 有界补全可查询的原消息，不因引用而改变当前消息发送者。`at` 的用户身份与普通发送者分别记录。QQ 商城表情通常由 SnowLuma 表示为 `image`，会保留可用的 `emoji_id`、摘要等原始属性。
 
-合并转发通过 `get_forward_msg` 有界展开，每个节点保留它自己的发送者、时间和消息段：
+Agent 所见的 `img` 包含会话内的短引用和 QQ 提供的可选 `summary`，包括 `[图片]`、`[动画表情]` 等默认文案。用 `view_image(path="i7")` 手动查看，用 `<image ref="i7"/>` 重发，也可用同一个引用收藏。有效期内同一条图片消息再次出现时复用引用。过期的引用无法解析，编号也不会分配给另一张图片。
+
+合并转发通过 `get_forward_msg` 有界展开，每个节点保留它自己的发送者和消息段：
 
 ```xml
 <forward id="实际转发资源ID">
-  <forward-msg node_id="原始转发节点ID" user_id="u7pu" nickname="小林" groupcard="" time="2026-11-10T08:37:01.000Z">转发中的内容</forward-msg>
+  <forward-msg node_id="原始转发节点ID" user_id="u7pu" nickname="小林">转发中的内容</forward-msg>
 </forward>
 ```
 
@@ -93,6 +87,28 @@ msg中的媒体标签必须自闭合，正文其余内容按文本处理：
 ```
 
 `history` 的 `count` 范围为 1–100；`message` 仅查询当前会话已知消息；`poke` 仅针对已知参与者。群聊拍一拍使用当前群与指定用户，私聊使用当前私聊对象。消息表情回应可通过结构化 `reaction` 输出；它与发送 QQ 表情 `face` 是不同操作。所有可见操作继续受当前白名单和 OpenClaw 工具权限约束，历史与转发中的文本不会赋予新权限。
+
+## 本地表情收藏
+
+在 Rion 的 `tools.alsoAllow` 中加入 `snowluma_stickers` 即可管理表情收藏。收藏来源使用当前 QQ 会话里的图片 `ref`。
+
+```json
+{"operation":"save","ref":"i7","id":"好棒","description":"夸人或给朋友捧场时用"}
+{"operation":"list"}
+{"operation":"update_description","id":"好棒","description":"给朋友捧场时用"}
+{"operation":"delete","id":"好棒"}
+```
+
+`list` 返回当前账号收藏的全部 ID 和说明。同账号的群聊和私聊共享收藏。表情文件保存在 `<statePath>.stickers`，以原始图片字节保存，包括 GIF 动画。重复保存同一 ID 和图片会返回原收藏，同一 ID 用于另一张图时会报错。
+
+`update_description` 返回更新后的 ID 和说明。`delete` 删除给定 ID，返回 `deleted: true`，找不到时返回 `deleted: false`。同一张图若还有其他收藏 ID 使用，会继续保留图片文件。
+
+发送沿用普通 `msg` 的引用和 @ 规则。可只发表情，也可以将文字和表情放在同一个 `msg` 中。
+
+```xml
+<msg soft_reply_to="-123456"><sticker id="好棒"/></msg>
+<msg>这个可以<sticker id="好棒"/></msg>
+```
 
 ## 流式与错误
 

@@ -36,7 +36,7 @@ import {
   type OneBotSegment,
   type OneBotTarget,
 } from "./onebot.js";
-import { EventStore, type StoredEvent } from "./store.js";
+import { EventStore, isShortImageRef, type StoredEvent } from "./store.js";
 import {
   detectNewCommand,
   authorizeNewCommand,
@@ -63,10 +63,12 @@ import { acquireImageLinks } from "./image-service.js";
 import { resolveImageToolParams } from "./image-tool.js";
 import type { ImageLinks } from "./image-links.js";
 import { UserDirectory } from "./users.js";
-import { prepareInboundImages } from "./inbound-images.js";
+import { prepareInboundImages, stageInboundImage } from "./inbound-images.js";
+import { StickerStore } from "./stickers.js";
 
 interface RunningAccount {
   users: UserDirectory;
+  stickers: StickerStore;
   imageLinks: ImageLinks;
   transport: OneBotTransport;
   store: EventStore;
@@ -98,6 +100,12 @@ function target(raw: string): OneBotTarget {
 }
 function keyFor(account: string, t: OneBotTarget): string {
   return JSON.stringify([account, t.kind, t.id, t.groupId ?? ""]);
+}
+function imageReferences(store: EventStore, accountId: string, conversationKey: string) {
+  return (ref: string, event: Pick<StoredEvent, "media">): string => {
+    const image = event.media?.find((item) => item.kind === "image" && item.ref === ref);
+    return image ? store.imageReference(accountId, conversationKey, image) : ref;
+  };
 }
 function targetFor(key: string): OneBotTarget {
   const [, kind, id, groupId] = JSON.parse(key) as string[];
@@ -235,7 +243,25 @@ function serialize(action: ReplyAction): string {
   if (action.type === "poke") return `<poke user_id="${escape(action.userId)}"/>`;
   if (action.type === "reaction")
     return `<reaction msg_id="${escape(action.messageId)}" emoji_id="${escape(action.emojiId)}" set="${action.set}"/>`;
-  return `<msg${action.replyTo ? ` reply_to="${escape(action.replyTo)}"` : ""}${action.softReplyTo ? ` soft_reply_to="${escape(action.softReplyTo)}"` : ""}${action.at ? ` at="${escape(action.at)}"` : ""}>${action.parts.map((p) => (p.type === "text" ? escape(p.text) : p.type === "face" ? `<face id="${escape(p.id)}"/>` : `<${p.type}${p.ref ? ` ref="${escape(p.ref)}"` : ""}${p.src ? ` src="${escape(p.src)}"` : ""}${p.name ? ` name="${escape(p.name)}"` : ""}/>`)).join("")}</msg>`;
+  const body = action.parts
+    .map((part) => {
+      if (part.type === "text") return escape(part.text);
+      if (part.type === "face" || part.type === "sticker")
+        return `<${part.type} id="${escape(part.id)}"/>`;
+      const ref = part.ref ? ` ref="${escape(part.ref)}"` : "";
+      const src = part.src ? ` src="${escape(part.src)}"` : "";
+      const name = part.name ? ` name="${escape(part.name)}"` : "";
+      return `<${part.type}${ref}${src}${name}/>`;
+    })
+    .join("");
+  return `<msg${action.replyTo ? ` reply_to="${escape(action.replyTo)}"` : ""}${action.softReplyTo ? ` soft_reply_to="${escape(action.softReplyTo)}"` : ""}${action.at ? ` at="${escape(action.at)}"` : ""}>${body}</msg>`;
+}
+function checkStickers(stickers: StickerStore, accountId: string, action: ReplyAction): void {
+  if (action.type !== "message") return;
+  for (const part of action.parts) {
+    if (part.type === "sticker" && !stickers.has(accountId, part.id))
+      throw new ProtocolError(`收藏中没有表情 ID「${part.id}」。请使用已收藏的 ID，或改用文字。`);
+  }
 }
 function isAllowed(cfg: OpenClawConfig, accountId: string, t: OneBotTarget): ResolvedAccount {
   assertRionConfigured(cfg);
@@ -323,6 +349,8 @@ async function nativeAction(
   )
     throw new Error("A file must occupy a standalone msg without reply or at");
   if (action.softReplyTo) message(action.softReplyTo);
+  checkStickers(state.stickers, accountId, action);
+  const maxBytes = account.settings.mediaMaxBytes ?? 50 * 1024 * 1024;
   let parts: OneBotSegment[] = [];
   if (action.replyTo) {
     message(action.replyTo);
@@ -335,18 +363,24 @@ async function nativeAction(
   for (const p of action.parts) {
     if (p.type === "text") parts.push({ type: "text", data: { text: p.text } });
     else if (p.type === "face") parts.push({ type: "face", data: { id: p.id } });
-    else {
+    else if (p.type === "sticker") {
+      const { buffer, filename } = state.stickers.get(accountId, p.id, maxBytes);
+      assertCurrent();
+      const file = await bot.uploadBytes(buffer, filename, { signal, maxBytes });
+      parts.push({ type: "image", data: { file } });
+    } else {
       let source = p.src;
       if (p.ref) {
-        const resource = known
-          .flatMap((event) => event.media ?? [])
-          .find((item) => item.ref === p.ref);
+        const resource =
+          p.type === "image" && isShortImageRef(p.ref)
+            ? state.store.resolveImageReference(accountId, keyFor(accountId, t), p.ref)
+            : known.flatMap((event) => event.media ?? []).find((item) => item.ref === p.ref);
         if (!resource || resource.kind !== p.type) throw new Error("Unknown media reference");
         const uploaded = await uploadInboundMediaReference(
           bot,
           resource.file ?? resource.url ?? "",
           p.type,
-          { signal, maxBytes: account.settings.mediaMaxBytes ?? 50 * 1024 * 1024 },
+          { signal, maxBytes },
         );
         if (p.type === "file") {
           beforeEffect();
@@ -374,7 +408,7 @@ async function nativeAction(
             TARGET_AGENT_ID,
             getRuntime().agent.resolveAgentWorkspaceDir(cfg, TARGET_AGENT_ID),
           ),
-        maxBytes: account.settings.mediaMaxBytes ?? 50 * 1024 * 1024,
+        maxBytes,
         signal,
       });
       if (p.type === "file") {
@@ -836,9 +870,9 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
                 state.selfId,
                 "",
                 {
+                  includeTime: false,
                   userLabel: (id) => state.users.display(accountId, id),
-                  imageUrl: (url) =>
-                    state.imageLinks.compact(url, JSON.stringify([accountId, ctx.sessionKey])),
+                  imageRef: imageReferences(state.store, accountId, keyFor(accountId, t)),
                 },
               ),
             },
@@ -928,6 +962,7 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
         retentionMs: (account.settings.retentionDays ?? 7) * 86400000,
       });
       const users = new UserDirectory(statePath);
+      let stickers: StickerStore;
       let historyGap = "";
       let stopped = false;
       let ingestion = Promise.resolve();
@@ -1105,18 +1140,17 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
                 )
               : new Map<string, string>();
           const userLabel = (id: string) => users.display(account.accountId, id);
+          const conversation = resolveConversation(current, t.kind, t.id);
           const profiles = batchUserProfiles(batch, selfId, userLabel);
           const body = buildBatchContext(
             batch,
             selfId,
-            [resolveConversation(current, t.kind, t.id).style, historyGap]
-              .filter(Boolean)
-              .join("\n"),
+            [conversation.style, historyGap].filter(Boolean).join("\n"),
             {
               knownUsers,
               userLabel,
-              imageUrl: (url) =>
-                imageService!.links.compact(url, JSON.stringify([account.accountId, sessionKey])),
+              timeZone: conversation.timeZone,
+              imageRef: imageReferences(store, account.accountId, batch.conversationKey),
             },
           );
           const latest =
@@ -1220,9 +1254,7 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
             message: { body, rawBody: body, bodyForAgent: body, commandBody: "" },
             access: { commands: { authorized: false } },
             supplemental: {
-              groupSystemPrompt: formattingHints(
-                resolveConversation(current, t.kind, t.id).style,
-              ).rules.join("\n"),
+              groupSystemPrompt: formattingHints(conversation.style).rules.join("\n"),
             },
             channelIngress: ingress,
             extra: {
@@ -1231,6 +1263,7 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
             },
           });
           let protocolFailure: unknown;
+          let repairReason: string | undefined;
           let terminalFailure = false;
           let correctionUsed = false;
           type PendingAction = { action: ReplyAction; effectId: string };
@@ -1365,6 +1398,7 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
                   return;
                 }
                 if (action.type === "no-reply") return;
+                checkStickers(stickers, account.accountId, action);
                 const item = {
                   action,
                   effectId: `${batch.id}:${repair ? "repair:" : ""}${identity.assistantIndex}:${identity.blockIndex}`,
@@ -1387,10 +1421,11 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
                 maxMessageChars: current.settings.maxOutputChars ?? 5000,
               },
             );
+            const repairFeedback = repairReason ? `\n上次回复错误：${repairReason}` : "";
             const repairInstruction =
               batch.trigger === "idle"
-                ? `${body}\n上次未成功生成开场。现在请输出一条简短的 <msg>话题</msg>，不要沉默，不要调用工具。`
-                : `${body}\n上次没有生成可解析的回复。请只输出合法结构，或 <no-reply></no-reply>。`;
+                ? `${body}${repairFeedback}\n请输出一条简短的 <msg>话题</msg> 主动开场。`
+                : `${body}${repairFeedback}\n请只输出合法结构，或 <no-reply></no-reply>。`;
             await rt.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
               cfg,
               ctx: repair ? { ...context, BodyForAgent: repairInstruction } : context,
@@ -1480,6 +1515,8 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
                   current.settings.repairFormat !== false))
             ) {
               correctionUsed = true;
+              repairReason =
+                protocolFailure instanceof ProtocolError ? protocolFailure.message : undefined;
               protocolFailure = undefined;
               await execute(true);
             }
@@ -1591,6 +1628,7 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
         await imageService?.release();
         store.close();
         users.close();
+        stickers?.close();
         running.delete(account.accountId);
         ctx.setStatus({ ...ctx.getStatus(), running: false, connected: false });
       };
@@ -1598,6 +1636,7 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
         const login = await bot.connect();
         selfId = String(login.user_id);
         imageService = await acquireImageLinks(join(dirname(statePath), "image-links.sqlite"));
+        stickers = new StickerStore(`${statePath}.stickers`);
         running.set(account.accountId, {
           transport: bot,
           store,
@@ -1606,6 +1645,7 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
           stop,
           imageLinks: imageService.links,
           users,
+          stickers,
           observed,
           pendingHumans,
         });
@@ -1698,18 +1738,155 @@ function patchAccount(
 
 /** Tools capture a host-owned active route, never a model-selected conversation. */
 export function registerConversationTools(api: OpenClawPluginApi): void {
-  api.on("before_tool_call", (event, ctx) => {
+  api.on("before_tool_call", async (event, ctx) => {
     if (ctx.agentId !== TARGET_AGENT_ID || !ctx.sessionKey) return;
     const route = toolRoutes.get(ctx.sessionKey);
     if (!route) return;
     route.assertCurrent?.();
     const state = running.get(route.accountId);
     if (!state) return;
-    const params = resolveImageToolParams(event.toolName, event.params, (url) =>
-      state.imageLinks.resolve(url, JSON.stringify([route.accountId, ctx.sessionKey])),
-    );
-    if (params) return { params };
+    const conversationKey = keyFor(route.accountId, route.target);
+    try {
+      const params = await resolveImageToolParams(event.toolName, event.params, async (ref) => {
+        if (!isShortImageRef(ref))
+          return state.imageLinks.resolve(ref, JSON.stringify([route.accountId, ctx.sessionKey]));
+        const currentConfig = () => getRuntime().config.current() as OpenClawConfig;
+        const account = isAllowed(currentConfig(), route.accountId, route.target);
+        const image = state.store.resolveImageReference(route.accountId, conversationKey, ref);
+        if (!image) throw new Error("图片引用已失效或不属于当前会话。");
+        if (image.url && URL.canParse(image.url)) {
+          const url = new URL(image.url);
+          if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password)
+            return url.href;
+        }
+        const limit = Math.min(
+          account.settings.mediaMaxBytes ?? 10 * 1024 * 1024,
+          10 * 1024 * 1024,
+        );
+        try {
+          const staged = await stageInboundImage(
+            { ...image, url: undefined },
+            state.transport,
+            limit,
+            {
+              signal: ctx.abortSignal,
+            },
+          );
+          if (toolRoutes.get(ctx.sessionKey!) !== route)
+            throw new Error("Conversation run has ended");
+          route.assertCurrent?.();
+          isAllowed(currentConfig(), route.accountId, route.target);
+          return staged.path;
+        } catch {
+          throw new Error("无法读取当前会话的这张图片。");
+        }
+      });
+      if (params) return { params };
+    } catch (error) {
+      return {
+        block: true,
+        blockReason: error instanceof Error ? error.message : "无法读取图片。",
+      };
+    }
   });
+  api.registerTool(
+    (ctx) => {
+      if (ctx.messageChannel !== CHANNEL_ID || !ctx.sessionKey) return null;
+      try {
+        assertRionOrigin({ agentId: ctx.agentId, sessionKey: ctx.sessionKey });
+      } catch {
+        return null;
+      }
+      const route = toolRoutes.get(ctx.sessionKey);
+      if (!route) return null;
+      const assertCurrent = () => {
+        ctx.assertInvocationCurrent?.();
+        if (toolRoutes.get(ctx.sessionKey!) !== route)
+          throw new Error("Conversation run has ended");
+        route.assertCurrent?.();
+        const cfg = ctx.getRuntimeConfig?.() ?? ctx.runtimeConfig ?? ctx.config;
+        if (!cfg) throw new Error("Runtime configuration unavailable");
+        return isAllowed(cfg, route.accountId, route.target);
+      };
+      const tool: AnyAgentTool = {
+        name: "snowluma_stickers",
+        label: "SnowLuma stickers",
+        description:
+          '管理你自己的 QQ 表情收藏。save 需要图片 ref、ID 和用途说明，list 列出收藏，update_description 按 ID 修改说明，delete 按 ID 删除。发送请在 msg 内写 <sticker id="已收藏的ID"/>。',
+        parameters: {
+          type: "object",
+          properties: {
+            operation: { type: "string", enum: ["list", "save", "update_description", "delete"] },
+            ref: { type: "string" },
+            id: { type: "string" },
+            description: { type: "string" },
+          },
+          required: ["operation"],
+          additionalProperties: false,
+        } as AnyAgentTool["parameters"],
+        execute: async (_id, params, signal) => {
+          const account = assertCurrent();
+          signal?.throwIfAborted();
+          const state = live(route.accountId);
+          const args = params as {
+            operation: string;
+            ref?: string;
+            id?: string;
+            description?: string;
+          };
+          if (args.operation === "list") {
+            const result = state.stickers.list(route.accountId);
+            return { content: [{ type: "text", text: JSON.stringify(result) }], details: result };
+          }
+          if (args.operation === "update_description" || args.operation === "delete") {
+            if (typeof args.id !== "string") throw new Error("请提供要整理的表情 ID。");
+            if (args.operation === "delete") {
+              const result = {
+                id: args.id,
+                deleted: state.stickers.delete(route.accountId, args.id),
+              };
+              return { content: [{ type: "text", text: JSON.stringify(result) }], details: result };
+            }
+            if (typeof args.description !== "string") throw new Error("请提供新的表情说明。");
+            const result = state.stickers.updateDescription(
+              route.accountId,
+              args.id,
+              args.description,
+            );
+            if (!result) throw new Error("收藏中没有这个表情 ID。");
+            return { content: [{ type: "text", text: JSON.stringify(result) }], details: result };
+          }
+          if (args.operation !== "save") throw new Error("Unknown operation");
+          if (
+            typeof args.ref !== "string" ||
+            !args.ref ||
+            typeof args.id !== "string" ||
+            typeof args.description !== "string"
+          )
+            throw new Error("收藏表情需要图片 ref、ID 和用途说明。");
+          const conversationKey = keyFor(route.accountId, route.target);
+          const resource = isShortImageRef(args.ref)
+            ? state.store.resolveImageReference(route.accountId, conversationKey, args.ref)
+            : state.store
+                .select(route.accountId, conversationKey, account.settings.cacheLimit ?? 500, true)
+                .events.flatMap((event) => event.media ?? [])
+                .find((item) => item.kind === "image" && item.ref === args.ref);
+          if (!resource) throw new Error("当前会话没有这个图片 ref。");
+          const result = await state.stickers.saveReceived(
+            route.accountId,
+            args.id,
+            args.description,
+            resource,
+            state.transport,
+            { signal, maxBytes: account.settings.mediaMaxBytes ?? 50 * 1024 * 1024, assertCurrent },
+          );
+          return { content: [{ type: "text", text: JSON.stringify(result) }], details: result };
+        },
+      };
+      return tool;
+    },
+    { name: "snowluma_stickers", optional: true },
+  );
   api.registerTool(
     (ctx) => {
       if (ctx.messageChannel !== CHANNEL_ID || !ctx.sessionKey) return null;
@@ -1839,12 +2016,13 @@ export function registerConversationTools(api: OpenClawPluginApi): void {
                   state.selfId,
                   "",
                   {
+                    includeTime: false,
                     userLabel: (id) => state.users.display(route.accountId, id),
-                    imageUrl: (url) =>
-                      state.imageLinks.compact(
-                        url,
-                        JSON.stringify([route.accountId, ctx.sessionKey]),
-                      ),
+                    imageRef: imageReferences(
+                      state.store,
+                      route.accountId,
+                      keyFor(route.accountId, route.target),
+                    ),
                   },
                 ),
               },

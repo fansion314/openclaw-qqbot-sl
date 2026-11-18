@@ -4,7 +4,7 @@
   "description": "Natural QQ conversations using SnowLuma OneBot v11",
   "channels": ["qq-snowluma"],
   "contracts": {
-    "tools": ["snowluma_context"]
+    "tools": ["snowluma_context", "snowluma_stickers"]
   },
   "configSchema": {
     "type": "object",

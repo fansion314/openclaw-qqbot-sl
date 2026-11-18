@@ -11,7 +11,7 @@ describe("transparent scoped image reads", () => {
       expect(ref).toMatch(/^qqimg:[A-Za-z0-9_-]{22}$/);
       expect(ref.length).toBe(28);
       expect(
-        resolveImageToolParams(
+        await resolveImageToolParams(
           "view_image",
           { path: ref, paths: [ref], prompt: "describe" },
           (url) => links.resolve(url, "rion"),
@@ -50,26 +50,25 @@ describe("transparent scoped image reads", () => {
         },
         "10002",
         "",
-        { imageUrl: (url) => links.shorten(url, "rion:group1") },
+        { imageRef: (ref) => (ref === "1:0" ? "i1" : "i2") },
       );
       expect(text).not.toContain("very-long-secret");
-      expect(text).toContain('ref="1:0"');
+      expect(text).toContain('<img ref="i1"/><reply msg_id="-1"><img ref="i2"/></reply>');
       const short = links.shorten(original, "rion:group1");
-      expect(text).toContain(short);
       expect(
-        resolveImageToolParams(
+        await resolveImageToolParams(
           "image",
           { image: short, images: [short], prompt: "describe" },
           (url) => links.resolve(url, "rion:group1"),
         ),
       ).toEqual({ image: original, images: [original], prompt: "describe" });
       expect(
-        resolveImageToolParams("image", { image: short }, (url) =>
+        await resolveImageToolParams("image", { image: short }, (url) =>
           links.resolve(url, "rion:group2"),
         ),
       ).toBeUndefined();
       expect(
-        resolveImageToolParams("exec", { command: short }, (url) =>
+        await resolveImageToolParams("exec", { command: short }, (url) =>
           links.resolve(url, "rion:group1"),
         ),
       ).toBeUndefined();

@@ -11,9 +11,11 @@ const mocks = vi.hoisted(() => ({
   bot: undefined as unknown,
   durable: vi.fn(),
   inboundImages: vi.fn(async (..._args: unknown[]) => [] as unknown[]),
+  stageImage: vi.fn(async (..._args: unknown[]) => ({ path: "/host/media/inbound/qq-image.gif" })),
 }));
 vi.mock("../src/inbound-images.js", () => ({
   prepareInboundImages: (...args: unknown[]) => mocks.inboundImages(...args),
+  stageInboundImage: (...args: unknown[]) => mocks.stageImage(...args),
 }));
 vi.mock("../src/onebot.js", () => ({
   SendCancelledError: class extends Error {},
@@ -21,6 +23,7 @@ vi.mock("../src/onebot.js", () => ({
     handler?: (event: OneBotEvent) => void;
     sends: OneBotSegment[][] = [];
     uploads: Uint8Array[] = [];
+    downloads = new Map<string, Buffer>();
     reactions: unknown[][] = [];
     pokes: unknown[][] = [];
     files: string[] = [];
@@ -84,6 +87,11 @@ vi.mock("../src/onebot.js", () => ({
       this.uploads.push(bytes);
       return "/snowluma/upload/authorized";
     }
+    async downloadMedia(source: string) {
+      const buffer = this.downloads.get(source);
+      if (!buffer) throw new Error("No fixture media");
+      return { buffer, filename: source };
+    }
     async sendFile(_target: unknown, path: string) {
       this.files.push(path);
       return { file_id: "file-proof" };
@@ -102,6 +110,7 @@ type Bot = {
   handler?: (event: OneBotEvent) => void;
   sends: OneBotSegment[][];
   uploads: Uint8Array[];
+  downloads: Map<string, Buffer>;
   reactions: unknown[][];
   pokes: unknown[][];
   files: string[];
@@ -271,6 +280,109 @@ async function fixture(
 }
 
 describe("channel orchestration with injected host and transport", () => {
+  it("saves the selected received image and streams it once from another conversation", async () => {
+    type StickerTool = { execute(id: string, params: unknown): Promise<{ details: unknown }> };
+    let createStickerTool!: (ctx: Record<string, unknown>) => StickerTool | null;
+    registerConversationTools({
+      on: () => {},
+      registerTool: (factory: typeof createStickerTool, metadata: { name: string }) => {
+        if (metadata.name === "snowluma_stickers") createStickerTool = factory;
+      },
+    } as unknown as Parameters<typeof registerConversationTools>[0]);
+    const gif = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
+    const entry = { id: "好棒", description: "给朋友捧场时用" };
+    const save = { operation: "save", ref: "i2", ...entry };
+    let saved = false;
+    let deleted = false;
+    const f = await fixture(async ({ ctx, replyOptions, dispatcherOptions }) => {
+      await replyOptions.onPreparedAgentRunStart();
+      const sessionKey = (ctx.route as { routeSessionKey: string }).routeSessionKey;
+      const toolContext = {
+        messageChannel: CHANNEL_ID,
+        sessionKey,
+        agentId: "rion",
+        config: f.cfg,
+      };
+      expect(createStickerTool({ ...toolContext, agentId: "main" })).toBeNull();
+      const tool = createStickerTool(toolContext)!;
+      if (sessionKey === "agent:rion:qq-group") {
+        const body = (ctx.message as { body: string }).body;
+        expect(body).toContain('<img ref="i1"/>');
+        expect(body).toContain('<img ref="i2"/>');
+        expect((await tool.execute("save", save)).details).toEqual(entry);
+        await replyOptions.onPartialReply({ text: "<no-reply/>" });
+        saved = true;
+        return;
+      }
+      expect((await tool.execute("list", { operation: "list" })).details).toEqual([entry]);
+      await expect(tool.execute("save-cross-chat", save)).rejects.toThrow(
+        "当前会话没有这个图片 ref",
+      );
+      const update = { operation: "update_description", id: entry.id, description: "认真夸人" };
+      const updated = { id: entry.id, description: update.description };
+      expect((await tool.execute("update", update)).details).toEqual(updated);
+      expect((await tool.execute("list-updated", { operation: "list" })).details).toEqual([
+        updated,
+      ]);
+      const text = '<msg>给你<sticker id="好棒"/></msg>';
+      await replyOptions.onPartialReply({ text: text.slice(0, 19) });
+      await replyOptions.onPartialReply({ text });
+      await dispatcherOptions.deliver({ text });
+      const remove = { operation: "delete", id: entry.id };
+      expect((await tool.execute("delete", remove)).details).toEqual({
+        id: entry.id,
+        deleted: true,
+      });
+      expect((await tool.execute("delete-again", remove)).details).toEqual({
+        id: entry.id,
+        deleted: false,
+      });
+      expect((await tool.execute("list-empty", { operation: "list" })).details).toEqual([]);
+      deleted = true;
+    });
+    f.bot.downloads.set("second.gif", gif);
+    f.emit(-123, {
+      message: [
+        { type: "image", data: { file: "first.gif" } },
+        { type: "image", data: { file: "second.gif" } },
+      ],
+    });
+    await vi.waitFor(() => expect(saved).toBe(true));
+    expect(f.bot.sends).toHaveLength(0);
+    f.emit(-124, {
+      message_type: "private",
+      message: [{ type: "text", data: { text: "发个表情" } }],
+    });
+    await vi.waitFor(() => expect(deleted).toBe(true));
+    await f.stop();
+    expect(f.errors).toEqual([]);
+    expect(f.bot.uploads).toEqual([gif]);
+    expect(f.bot.sends).toEqual([
+      [
+        { type: "text", data: { text: "给你" } },
+        { type: "image", data: { file: "/snowluma/upload/authorized" } },
+      ],
+    ]);
+  });
+  it("tells the agent about unknown sticker IDs before any send occurs", async () => {
+    let runs = 0;
+    const f = await fixture(async ({ ctx, replyOptions }) => {
+      await replyOptions.onPreparedAgentRunStart();
+      if (++runs === 1) {
+        await replyOptions.onPartialReply({
+          text: '<msg soft_reply_to="-123"><sticker id="未收藏"/></msg>',
+        });
+      } else {
+        expect(ctx.BodyForAgent).toContain("收藏中没有表情 ID「未收藏」");
+        await replyOptions.onPartialReply({ text: '<msg soft_reply_to="-123">好耶</msg>' });
+      }
+    });
+    f.emit();
+    await vi.waitFor(() => expect(f.bot.sends).toHaveLength(1));
+    await f.stop();
+    expect(f.bot.uploads).toEqual([]);
+    expect(f.bot.sends).toEqual([[{ type: "text", data: { text: "好耶" } }]]);
+  });
   it("keeps a native tool message and its plain streamed followup in one turn without target repair or duplication", async () => {
     const f = await fixture(async ({ replyOptions }) => {
       await replyOptions.onPreparedAgentRunStart();
@@ -782,10 +894,18 @@ describe("channel orchestration with injected host and transport", () => {
     expect(f.bot.sends[0]).toEqual([{ type: "text", data: { text: "也戳你一下喵～ (ﾉ>ω<)ﾉ" } }]);
     expect(f.errors).toEqual([]);
   });
-  it("replaces long image links in context and resolves image tool calls only for the active rion scope", async () => {
-    let before:
-      | ((event: unknown, ctx: unknown) => { params?: Record<string, unknown> } | undefined)
-      | undefined;
+  it("shares a short image ref between manual viewing and forwarding in the active Rion conversation", async () => {
+    let before!: (
+      event: unknown,
+      ctx: unknown,
+    ) => Promise<
+      | {
+          params?: Record<string, unknown>;
+          block?: boolean;
+          blockReason?: string;
+        }
+      | undefined
+    >;
     registerConversationTools({
       on: (_name: unknown, handler: typeof before) => {
         before = handler;
@@ -796,26 +916,40 @@ describe("channel orchestration with injected host and transport", () => {
     const f = await fixture(async ({ ctx, replyOptions }) => {
       const body = (ctx.message as { bodyForAgent: string }).bodyForAgent;
       expect(body).not.toContain("long-sensitive-value");
-      const url = /url="([^"]+)"/.exec(body)![1];
-      expect(url).toMatch(/^qqimg:[A-Za-z0-9_-]{22}$/);
+      expect(body).toContain(
+        '<img ref="i1" summary="[图片]"/><img ref="i2" summary="[动画表情]"/>',
+      );
+      const sessionKey = (ctx.route as { routeSessionKey: string }).routeSessionKey;
+      const scope = { agentId: "rion", sessionKey };
       expect(
-        before!(
-          { toolName: "view_image", params: { path: url } },
-          { agentId: "rion", sessionKey: "agent:rion:qq-group" },
-        )?.params,
-      ).toEqual({ path: original });
+        (await before({ toolName: "view_image", params: { paths: ["i1", "i2"] } }, scope))?.params,
+      ).toEqual({ paths: [original, "/host/media/inbound/qq-image.gif"] });
+      expect(mocks.stageImage.mock.calls[0]?.[0]).toMatchObject({ file: "fallback.gif" });
+      expect(await before({ toolName: "view_image", params: { path: "iz" } }, scope)).toMatchObject(
+        { block: true, blockReason: "图片引用已失效或不属于当前会话。" },
+      );
       expect(
-        before!(
-          { toolName: "view_image", params: { path: url } },
-          { agentId: "main", sessionKey: "agent:rion:qq-group" },
+        await before(
+          { toolName: "view_image", params: { path: "i1" } },
+          { ...scope, agentId: "main" },
         ),
       ).toBeUndefined();
       replyOptions.onPreparedAgentRunStart();
-      await replyOptions.onPartialReply({ text: "<no-reply></no-reply>" });
+      await replyOptions.onPartialReply({
+        text: '<msg soft_reply_to="-345"><image ref="i2"/></msg>',
+      });
     });
-    f.emit(-345, { message: [{ type: "image", data: { url: original, file: original } }] });
-    await vi.waitFor(() => expect(f.calls).toHaveLength(1));
+    const imageBytes = Buffer.from("fixture media");
+    f.bot.downloads.set("fallback.gif", imageBytes);
+    f.emit(-345, {
+      message: [
+        { type: "image", data: { url: original, file: original, summary: "[图片]" } },
+        { type: "image", data: { file: "fallback.gif", summary: "[动画表情]" } },
+      ],
+    });
+    await vi.waitFor(() => expect(f.bot.sends).toHaveLength(1));
     await f.stop();
+    expect(f.bot.uploads).toEqual([imageBytes]);
     expect(f.errors).toEqual([]);
   });
   it("announces profiles only after admission and renews them for a new actual session", async () => {

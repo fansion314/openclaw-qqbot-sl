@@ -61,6 +61,55 @@ describe("structured streaming", () => {
       ]);
     }
   });
+  it("emits a saved sticker with text only after its complete message and only once", async () => {
+    const value = '<msg soft_reply_to="-123">好耶<sticker id="好棒_2"/></msg>';
+    for (let i = 0; i <= value.length; i++) {
+      const sent: ReplyAction[] = [];
+      const stream = new StructuredReplyStream(async (action) => {
+        sent.push(action);
+      });
+      await stream.update({ text: value.slice(0, i) });
+      expect(sent).toHaveLength(i === value.length ? 1 : 0);
+      await stream.update({ text: value });
+      await stream.finish(value);
+      expect(sent).toEqual([
+        {
+          type: "message",
+          softReplyTo: "-123",
+          parts: [
+            { type: "text", text: "好耶" },
+            { type: "sticker", id: "好棒_2" },
+          ],
+        },
+      ]);
+    }
+  });
+  it("accepts a sticker-only message and decodes its XML ID", async () => {
+    const sent: ReplyAction[] = [];
+    const stream = new StructuredReplyStream(async (action) => {
+      sent.push(action);
+    });
+    await stream.finish('<msg><sticker id="&#x597D;棒"/></msg>');
+    expect(sent).toEqual([{ type: "message", parts: [{ type: "sticker", id: "好棒" }] }]);
+  });
+  it.each([
+    '<msg><sticker/></msg>',
+    '<msg><sticker id=""/></msg>',
+    '<msg><sticker id="../好棒"/></msg>',
+    '<msg><sticker id="好 棒"/></msg>',
+    `<msg><sticker id="${"好".repeat(33)}"/></msg>`,
+    '<msg><sticker id="好棒" src="https://example.com/x"/></msg>',
+    '<msg><sticker id="好棒" id="探头"/></msg>',
+    '<msg><sticker id="好棒"></sticker></msg>',
+    '<sticker id="好棒"/>',
+  ])("rejects malformed sticker markup before effects: %s", async (value) => {
+    const sent: ReplyAction[] = [];
+    const stream = new StructuredReplyStream(async (action) => {
+      sent.push(action);
+    });
+    await expect(stream.finish(value)).rejects.toThrow();
+    expect(sent).toEqual([]);
+  });
   it.each(["1", "2147483647", "-1", "-2147483648"])(
     "accepts signed soft reply ID %s without an implicit mention",
     async (id) => {

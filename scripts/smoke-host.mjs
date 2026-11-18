@@ -65,6 +65,8 @@ try {
     throw new Error("Host did not select rion workspace");
   if (!report.plugin.toolNames?.includes("snowluma_context"))
     throw new Error("Conversation tool not registered");
+  if (!report.plugin.toolNames?.includes("snowluma_stickers"))
+    throw new Error("Sticker tool not registered");
 } finally {
   await rm(state, { recursive: true, force: true });
 }

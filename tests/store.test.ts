@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import { DatabaseSync } from "node:sqlite";
-import { EventStore, type StoredEvent } from "../src/store.js";
+import { EventStore, isShortImageRef, type StoredEvent } from "../src/store.js";
+import type { InboundMedia } from "../src/inbound.js";
 
 function event(id: string, extra: Partial<StoredEvent> = {}): StoredEvent {
   return {
@@ -21,6 +22,89 @@ function event(id: string, extra: Partial<StoredEvent> = {}): StoredEvent {
 }
 
 describe("durable event store", () => {
+  it("recognizes canonical short image refs and rejects aliases outside the integer range", () => {
+    for (const alias of ["i1", "iz", "i10", "iabc123"]) expect(isShortImageRef(alias)).toBe(true);
+    for (const alias of ["i", "i0", "i01", "I1", "iA", "i-1", "1:0", " i1"])
+      expect(isShortImageRef(alias)).toBe(false);
+    const store = new EventStore(":memory:");
+    expect(store.resolveImageReference("a", "group:1", "izzzzzzzzzzzzz")).toBeUndefined();
+    expect(store.resolveImageReference("a", "group:1", `i${"z".repeat(100)}`)).toBeUndefined();
+    store.close();
+  });
+
+  it("persists scoped image aliases across handles and restart outside the event window", () => {
+    const dir = mkdtempSync(join(tmpdir(), "snow-image-ref-"));
+    const path = join(dir, "state.db");
+    const image: InboundMedia = {
+      kind: "image",
+      ref: "-1:1",
+      messageId: "-1",
+      url: "https://example.com/original",
+      file: "received-file",
+      data: { summary: "好棒" },
+    };
+    let store = new EventStore(path, { cacheMaxMessages: 1, retentionMs: 1000 });
+    try {
+      const alias = store.imageReference("a", "group:1", image, 1000);
+      expect(alias).toBe("i1");
+      const other = new EventStore(path, { retentionMs: 1000 });
+      try {
+        expect(other.imageReference("a", "group:1", image, 1001)).toBe(alias);
+        const refreshed = { ...image, url: "https://example.com/refreshed" };
+        expect(other.imageReference("a", "group:1", refreshed, 1002)).toBe(alias);
+        expect(store.resolveImageReference("a", "group:1", alias, 1003)).toEqual(refreshed);
+      } finally {
+        other.close();
+      }
+      expect(store.imageReference("b", "group:1", image, 1000)).not.toBe(alias);
+      expect(store.imageReference("a", "group:2", image, 1000)).not.toBe(alias);
+      expect(store.resolveImageReference("b", "group:1", alias, 1003)).toBeUndefined();
+      expect(store.resolveImageReference("a", "group:2", alias, 1003)).toBeUndefined();
+      expect(store.select("a", "group:1", 500, true).events).toEqual([]);
+      store.close();
+      store = new EventStore(path, { retentionMs: 1000 });
+      expect(store.resolveImageReference("a", "group:1", alias, 1003)).toMatchObject({
+        ref: "-1:1",
+      });
+    } finally {
+      store.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("expires aliases without recycling them and prunes during assignment and event writes", () => {
+    const dir = mkdtempSync(join(tmpdir(), "snow-image-expiry-"));
+    const path = join(dir, "state.db");
+    const image: InboundMedia = { kind: "image", ref: "-1:0", messageId: "-1", file: "original" };
+    const store = new EventStore(path, { retentionMs: 1000 });
+    const db = new DatabaseSync(path);
+    try {
+      const original = store.imageReference("a", "group:1", image, 1000);
+      expect(store.resolveImageReference("a", "group:1", original, 1999)).toEqual(image);
+      expect(store.resolveImageReference("a", "group:1", original, 2000)).toBeUndefined();
+      const fresh = store.imageReference("a", "group:1", { ...image, file: "new" }, 2000);
+      expect(fresh).not.toBe(original);
+      expect(store.resolveImageReference("a", "group:1", original, 2001)).toBeUndefined();
+      expect(store.resolveImageReference("a", "group:1", fresh, 2001)).toMatchObject({
+        file: "new",
+      });
+      expect(db.prepare("SELECT COUNT(*) AS count FROM image_references").get()).toEqual({
+        count: 1,
+      });
+      store.add(event("1", { time: 3000 }), 3000);
+      expect(db.prepare("SELECT COUNT(*) AS count FROM image_references").get()).toEqual({
+        count: 0,
+      });
+      const latest = store.imageReference("a", "group:1", image, 3000);
+      expect(latest).not.toBe(original);
+      expect(latest).not.toBe(fresh);
+    } finally {
+      db.close();
+      store.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("orders later live messages by time and arrival, excluding self, imports, notices and other conversations", () => {
     const store = new EventStore(":memory:");
     store.add(event("-999", { time: 1000, human: false, trigger: false }), 1000);
