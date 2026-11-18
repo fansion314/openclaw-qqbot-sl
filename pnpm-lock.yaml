@@ -169,6 +169,9 @@ importers:
       '@snowluma/sdk':
         specifier: 2.4.2
         version: 2.4.2
+      jpeg-js:
+        specifier: 0.4.4
+        version: 0.4.4
     devDependencies:
       '@types/node':
         specifier: ^26.0.0
@@ -1095,6 +1098,7 @@ packages:
   '@snowluma/sdk@2.4.2':
     resolution: {integrity: sha512-57rNH/FwyDpkbDLyjwsrQwNCZu2a5QXQC78fVqxY4o/qOVVqLlW+T9yOzk1nz4RSDiuk2lr57sq38EMHOom0FA==}
     engines: {node: ^24.22.1 || >=26.12.1}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@stablelib/base64@1.0.1':
     resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
@@ -2148,6 +2152,9 @@ packages:
 
   jose@6.2.16:
     resolution: {integrity: sha512-4LSJpbuBuPdGrONCdZUy0xnxtLf8eEz+EY0SMXdHQEBU7bgUHDVblU/JAjryv3wID9/LK7/YuwFwq+AQNfMscQ==}
+
+  jpeg-js@0.4.4:
+    resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
 
   js-tokens@10.0.0:
     resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
@@ -4690,6 +4697,8 @@ snapshots:
   jiti@2.7.0: {}
 
   jose@6.2.16: {}
+
+  jpeg-js@0.4.4: {}
 
   js-tokens@10.0.0: {}
 

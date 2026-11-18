@@ -1,21 +1,31 @@
 /** Real host discovery/load smoke; isolated state, no gateway or QQ account. */
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const packageRoot = resolve(process.argv[2] ?? root);
 const state = await mkdtemp(join(tmpdir(), "snowluma-openclaw-smoke-"));
 try {
   const configPath = join(state, "openclaw.json");
+  const workspace = join(state, "rion-workspace");
+  await mkdir(join(workspace, "skills"), { recursive: true });
+  await cp(
+    join(packageRoot, "examples/rion/skills/rion-tarot"),
+    join(workspace, "skills/rion-tarot"),
+    {
+      recursive: true,
+    },
+  );
   await writeFile(
     configPath,
     JSON.stringify({
-      agents: { entries: { rion: { workspace: join(state, "rion-workspace") } } },
+      agents: { entries: { rion: { workspace, tools: { alsoAllow: ["snowluma_tarot_draw"] } } } },
       bindings: [{ agentId: "rion", match: { channel: "qq-snowluma" } }],
       plugins: {
         allow: ["world.fansionia.openclaw-qqbot-snowluma"],
-        load: { paths: [root] },
+        load: { paths: [packageRoot] },
         entries: { "world.fansionia.openclaw-qqbot-snowluma": { enabled: true } },
       },
       channels: {
@@ -27,33 +37,35 @@ try {
       },
     }),
   );
-  const result = spawnSync(
-    process.execPath,
-    [
-      join(root, "node_modules/openclaw/openclaw.mjs"),
-      "plugins",
-      "inspect",
-      "world.fansionia.openclaw-qqbot-snowluma",
-      "--runtime",
-      "--json",
-    ],
-    {
-      cwd: root,
-      env: {
-        ...process.env,
-        OPENCLAW_STATE_DIR: state,
-        OPENCLAW_CONFIG_PATH: configPath,
-        OPENCLAW_SKIP_CHANNELS: "1",
+  const run = (command) => {
+    const result = spawnSync(
+      process.execPath,
+      [join(root, "node_modules/openclaw/openclaw.mjs"), ...command],
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          OPENCLAW_STATE_DIR: state,
+          OPENCLAW_CONFIG_PATH: configPath,
+          OPENCLAW_SKIP_CHANNELS: "1",
+        },
+        encoding: "utf8",
+        timeout: 90000,
       },
-      encoding: "utf8",
-      timeout: 90000,
-    },
-  );
-  process.stdout.write(result.stdout ?? "");
-  process.stderr.write(result.stderr ?? "");
-  if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(`OpenClaw smoke exited ${result.status}`);
-  const report = JSON.parse(result.stdout);
+    );
+    process.stdout.write(result.stdout ?? "");
+    process.stderr.write(result.stderr ?? "");
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error(`OpenClaw smoke exited ${result.status}`);
+    return JSON.parse(result.stdout);
+  };
+  const report = run([
+    "plugins",
+    "inspect",
+    "world.fansionia.openclaw-qqbot-snowluma",
+    "--runtime",
+    "--json",
+  ]);
   if (
     report.plugin?.id !== "world.fansionia.openclaw-qqbot-snowluma" ||
     !report.plugin?.imported ||
@@ -67,6 +79,11 @@ try {
     throw new Error("Conversation tool not registered");
   if (!report.plugin.toolNames?.includes("snowluma_stickers"))
     throw new Error("Sticker tool not registered");
+  if (!report.plugin.toolNames?.includes("snowluma_tarot_draw"))
+    throw new Error("Tarot tool not registered");
+  const { skills } = run(["skills", "list", "--agent", "rion", "--eligible", "--json"]);
+  if (!skills?.some(({ name }) => name === "rion-tarot"))
+    throw new Error("Rion workspace could not discover the tarot skill");
 } finally {
   await rm(state, { recursive: true, force: true });
 }

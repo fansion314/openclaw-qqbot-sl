@@ -280,6 +280,72 @@ async function fixture(
 }
 
 describe("channel orchestration with injected host and transport", () => {
+  it("sends a tarot image before the reading and keeps recalls tied to the requester", async () => {
+    type TarotResult = { imagePath: string; cards: unknown[] };
+    type TarotTool = { execute(id: string, params: unknown): Promise<{ details: TarotResult }> };
+    let createTool!: (ctx: Record<string, unknown>) => TarotTool | null;
+    registerConversationTools({
+      on: () => {},
+      registerTool: (factory: typeof createTool, metadata: { name: string }) => {
+        if (metadata.name === "snowluma_tarot_draw") createTool = factory;
+      },
+    } as unknown as Parameters<typeof registerConversationTools>[0]);
+    let initial: TarotResult;
+    let captured!: TarotTool;
+    const followup = { operation: "recall", message_id: "-123", followup_message_id: "-124" };
+    const f = await fixture(async ({ ctx, replyOptions }) => {
+      await replyOptions.onPreparedAgentRunStart();
+      const toolContext = {
+        messageChannel: CHANNEL_ID,
+        sessionKey: (ctx.route as { routeSessionKey: string }).routeSessionKey,
+        agentId: "rion",
+        config: f.cfg,
+      };
+      expect(createTool({ ...toolContext, agentId: "main" })).toBeNull();
+      expect(createTool({ ...toolContext, messageChannel: "discord" })).toBeNull();
+      const tool = createTool(toolContext)!;
+      if (f.calls.length === 1) {
+        captured = tool;
+        await expect(
+          tool.execute("missing", { spread: "advice", message_id: "-404" }),
+        ).rejects.toThrow();
+        const draw = { operation: "draw", spread: "advice", message_id: "-123" };
+        initial = (await tool.execute("draw", draw)).details;
+        expect(initial.cards).toHaveLength(3);
+        expect((await tool.execute("retry", draw)).details).toEqual(initial);
+        await replyOptions.onPartialReply({
+          text: `<msg soft_reply_to="-123">你的三张牌<image src="${initial.imagePath}"/></msg><msg>先从眼下能准备的事入手</msg>`,
+        });
+      } else if (f.calls.length === 2) {
+        await expect(tool.execute("recall", followup)).rejects.toThrow();
+        await replyOptions.onPartialReply({ text: "<no-reply/>" });
+      } else {
+        const recalled = await tool.execute("recall", { ...followup, followup_message_id: "-125" });
+        expect(recalled.details).toEqual(initial);
+        await replyOptions.onPartialReply({
+          text: '<msg soft_reply_to="-125">看回刚才那三张牌</msg>',
+        });
+      }
+    });
+    f.emit();
+    await vi.waitFor(() => expect(f.bot.sends).toHaveLength(2), { timeout: 5000 });
+    f.emit(-124, { user_id: 10003, sender: { user_id: 10003, nickname: "Bob" } });
+    await vi.waitFor(() => expect(f.calls).toHaveLength(2));
+    f.emit(-125);
+    await vi.waitFor(() => expect(f.bot.sends).toHaveLength(3));
+    await f.stop();
+    await expect(
+      captured.execute("stale", { spread: "advice", message_id: "-123" }),
+    ).rejects.toThrow();
+    expect(f.bot.sends[0]).toEqual([
+      { type: "text", data: { text: "你的三张牌" } },
+      { type: "image", data: { file: "/snowluma/upload/authorized" } },
+    ]);
+    expect(f.bot.sends[1]).toEqual([{ type: "text", data: { text: "先从眼下能准备的事入手" } }]);
+    expect(f.bot.uploads).toHaveLength(1);
+    expect(Buffer.from(f.bot.uploads[0]!).subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
+    expect(f.errors).toEqual([]);
+  });
   it("saves the selected received image and streams it once from another conversation", async () => {
     type StickerTool = { execute(id: string, params: unknown): Promise<{ details: unknown }> };
     let createStickerTool!: (ctx: Record<string, unknown>) => StickerTool | null;

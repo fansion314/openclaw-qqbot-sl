@@ -1,0 +1,911 @@
+[
+  {
+    "id": "the-fool",
+    "name": "The Fool",
+    "nameZh": "愚人",
+    "image": "00-TheFool.jpg",
+    "keywords": ["新开始", "纯真", "随性", "自由精神", "冒险", "信任", "潜能", "风险"],
+    "upright": "新的开始和无限潜能，怀着信任迈向未知。",
+    "reversed": "鲁莽、判断失当，或害怕承担必要的风险。"
+  },
+  {
+    "id": "the-magician",
+    "name": "The Magician",
+    "nameZh": "魔术师",
+    "image": "01-TheMagician.jpg",
+    "keywords": ["显化", "意志力", "善用资源", "力量", "灵感行动", "专注", "技巧", "转化"],
+    "upright": "善用资源，将专注的意志化为行动，创造想要的现实。",
+    "reversed": "操控、幻象，或尚未得到恰当发挥的潜能。"
+  },
+  {
+    "id": "the-high-priestess",
+    "name": "The High Priestess",
+    "nameZh": "女祭司",
+    "image": "02-TheHighPriestess.jpg",
+    "keywords": ["直觉", "神圣知识", "阴性能量", "潜意识", "神秘", "灵性洞察", "内在智慧", "接纳"],
+    "upright": "相信直觉，透过表象寻找隐藏的真相与内在智慧。",
+    "reversed": "直觉受阻、秘密显露，或忽略内心的声音。"
+  },
+  {
+    "id": "the-empress",
+    "name": "The Empress",
+    "nameZh": "皇后",
+    "image": "03-TheEmpress.jpg",
+    "keywords": ["孕育", "女性气质", "美", "自然", "丰盛", "滋养", "创造力", "感官体验"],
+    "upright": "丰盛、滋养与孕育的力量，让创造性的努力蓬勃发展。",
+    "reversed": "创作受阻、疏于照料、相互依赖，或过度照顾使人窒息。"
+  },
+  {
+    "id": "the-emperor",
+    "name": "The Emperor",
+    "nameZh": "皇帝",
+    "image": "04-TheEmperor.jpg",
+    "keywords": ["权威", "秩序", "结构", "父亲形象", "稳定", "力量", "保护", "控制"],
+    "upright": "以权威、结构与领导力，从混乱中建立秩序。",
+    "reversed": "专横、僵化、支配，或缺乏力量与自律。"
+  },
+  {
+    "id": "the-hierophant",
+    "name": "The Hierophant",
+    "nameZh": "教皇",
+    "image": "05-TheHierophant.jpg",
+    "keywords": ["精神智慧", "信仰", "遵循规范", "传统", "制度", "教导", "指引", "仪式"],
+    "upright": "传统价值、精神指引与教育，遵循既有的制度。",
+    "reversed": "挑战传统、采用非常规方法，或僵化教条阻碍成长。"
+  },
+  {
+    "id": "the-lovers",
+    "name": "The Lovers",
+    "nameZh": "恋人",
+    "image": "06-TheLovers.jpg",
+    "keywords": ["爱", "关系", "选择", "和谐", "结合", "价值观", "伙伴关系", "吸引"],
+    "upright": "爱与和谐的伙伴关系，也代表在不同道路或价值观之间作出重要选择。",
+    "reversed": "关系失和、选择失当，或自身价值观发生冲突。"
+  },
+  {
+    "id": "the-chariot",
+    "name": "The Chariot",
+    "nameZh": "战车",
+    "image": "07-TheChariot.jpg",
+    "keywords": ["意志力", "决心", "胜利", "控制", "方向", "凯旋", "专注", "自律"],
+    "upright": "凭借意志与决心协调相反的力量，争取胜利。",
+    "reversed": "失去控制、精力分散，或被相互冲突的方向拉扯。"
+  },
+  {
+    "id": "strength",
+    "name": "Strength",
+    "nameZh": "力量",
+    "image": "08-Strength.jpg",
+    "keywords": ["内在力量", "勇气", "耐心", "慈悲", "自制", "温柔的力量", "毅力", "驯服"],
+    "upright": "以内在力量、勇气、耐心与爱，克服面前的挑战。",
+    "reversed": "内在力量不足、被压力压倒，或滥用力量。"
+  },
+  {
+    "id": "the-hermit",
+    "name": "The Hermit",
+    "nameZh": "隐士",
+    "image": "09-TheHermit.jpg",
+    "keywords": ["内省", "探索内心", "内在指引", "智慧", "独处", "冥想", "领悟", "精神导师"],
+    "upright": "探索内心、寻求智慧，需要独处与自我审视。",
+    "reversed": "孤立、固执，或回避必要的内在探索。"
+  },
+  {
+    "id": "wheel-of-fortune",
+    "name": "Wheel of Fortune",
+    "nameZh": "命运之轮",
+    "image": "10-WheelOfFortune.jpg",
+    "keywords": ["命运", "机缘", "循环", "转折点", "因果", "运气", "变化", "时机"],
+    "upright": "人生的转折、好运，以及与命运变化相契合的时机。",
+    "reversed": "遭遇挫折、抗拒变化，或面对生活循环感到失控。"
+  },
+  {
+    "id": "justice",
+    "name": "Justice",
+    "nameZh": "正义",
+    "image": "11-Justice.jpg",
+    "keywords": ["平衡", "公平", "因果", "真相", "责任", "法律事务", "因果关系", "正直"],
+    "upright": "平衡、公平与承担责任，行动的因果正在显现。",
+    "reversed": "不公、失衡、缺乏责任感，或逃避行为的后果。"
+  },
+  {
+    "id": "the-hanged-man",
+    "name": "The Hanged Man",
+    "nameZh": "倒吊人",
+    "image": "12-TheHangedMan.jpg",
+    "keywords": ["顺其自然", "牺牲", "放下", "新视角", "暂停", "等待", "精神洞察", "领悟"],
+    "upright": "通过放下、等待与必要的牺牲，获得新的观察角度。",
+    "reversed": "抗拒放手、感到停滞，或作出不必要的自我牺牲。"
+  },
+  {
+    "id": "death",
+    "name": "Death",
+    "nameZh": "死神",
+    "image": "13-Death.jpg",
+    "keywords": ["转变", "结束", "重生", "更新", "释放", "变化", "过渡", "蜕变"],
+    "upright": "必要的结束带来转变，进入人生新的阶段。",
+    "reversed": "抗拒改变、害怕转变，或某段结束尚未完成。"
+  },
+  {
+    "id": "temperance",
+    "name": "Temperance",
+    "nameZh": "节制",
+    "image": "14-Temperance.jpg",
+    "keywords": ["平衡", "适度", "耐心", "和谐", "疗愈", "融合", "中道", "调和"],
+    "upright": "以平衡、适度与耐心，调和相反的力量。",
+    "reversed": "失衡、走向极端、急躁，或难以找到和谐。"
+  },
+  {
+    "id": "the-devil",
+    "name": "The Devil",
+    "nameZh": "恶魔",
+    "image": "15-TheDevil.jpg",
+    "keywords": ["束缚", "诱惑", "物质主义", "沉迷", "幻象", "阴影", "限制", "欲望"],
+    "upright": "被物质欲望与诱惑束缚，觉得自己无路可走。",
+    "reversed": "挣脱束缚、克服沉迷，或意识到自己拥有选择的自由。"
+  },
+  {
+    "id": "the-tower",
+    "name": "The Tower",
+    "nameZh": "高塔",
+    "image": "16-TheTower.jpg",
+    "keywords": ["突变", "动荡", "觉醒", "解放", "揭示", "摧毁", "突破", "震惊"],
+    "upright": "突如其来的变化打破虚假的基础，带来觉醒与解放。",
+    "reversed": "抗拒变化、回避必要的动荡，或转变正在缓慢发生。"
+  },
+  {
+    "id": "the-star",
+    "name": "The Star",
+    "nameZh": "星星",
+    "image": "17-TheStar.jpg",
+    "keywords": ["希望", "灵感", "精神指引", "疗愈", "更新", "信念", "神圣联结", "愿望实现"],
+    "upright": "经历困难后，重新获得希望、灵感、指引与信念。",
+    "reversed": "缺乏信心、与内在指引失去联系，或梦想暂缓实现。"
+  },
+  {
+    "id": "the-moon",
+    "name": "The Moon",
+    "nameZh": "月亮",
+    "image": "18-TheMoon.jpg",
+    "keywords": ["幻象", "直觉", "潜意识", "梦境", "恐惧", "欺瞒", "感知力", "隐藏真相"],
+    "upright": "面对幻象与潜意识中的恐惧，依靠直觉穿越不确定。",
+    "reversed": "混乱中逐渐明朗、走出幻象，或直觉受到压抑。"
+  },
+  {
+    "id": "the-sun",
+    "name": "The Sun",
+    "nameZh": "太阳",
+    "image": "19-TheSun.jpg",
+    "keywords": ["喜悦", "成功", "活力", "领悟", "乐观", "成就", "清晰", "庆祝"],
+    "upright": "喜悦、成功与活力，获得幸福和清晰的领悟。",
+    "reversed": "成功暂时蒙上阴影、幸福有所延迟，或难以感受到喜悦。"
+  },
+  {
+    "id": "judgement",
+    "name": "Judgement",
+    "nameZh": "审判",
+    "image": "20-Judgement.jpg",
+    "keywords": ["重生", "内心召唤", "觉醒", "评估", "宽恕", "救赎", "精神更新", "更高目标"],
+    "upright": "精神上的重生与内心召唤，觉察更深的目标并重新审视自己。",
+    "reversed": "抗拒内心的召唤、苛刻地评判自己，或觉醒延迟。"
+  },
+  {
+    "id": "the-world",
+    "name": "The World",
+    "nameZh": "世界",
+    "image": "21-TheWorld.jpg",
+    "keywords": ["完成", "满足", "成就", "完整", "整体意识", "整合", "精通", "领悟"],
+    "upright": "目标完成、获得满足与成就，产生完整而相互联结的意识。",
+    "reversed": "目标尚未完成、向外寻求完整感，或抗拒整合与圆满。"
+  },
+  {
+    "id": "ace-of-wands",
+    "name": "Ace of Wands",
+    "nameZh": "权杖王牌",
+    "image": "Wands01.jpg",
+    "keywords": ["创意火花", "新开始", "灵感", "潜能", "热情", "主动性", "原始能量", "突破"],
+    "upright": "充满热情与潜能的创造性或精神层面的新开始。",
+    "reversed": "创造力受阻、开局落空，或精力用错方向而阻碍进展。"
+  },
+  {
+    "id": "two-of-wands",
+    "name": "Two of Wands",
+    "nameZh": "权杖二",
+    "image": "Wands02.jpg",
+    "keywords": ["个人力量", "规划", "未来计划", "掌控", "扩张", "发现", "长远眼光", "抱负"],
+    "upright": "规划未来，主动掌握方向，为扩展做好准备。",
+    "reversed": "缺乏规划、害怕改变，或迟迟没有行动。"
+  },
+  {
+    "id": "three-of-wands",
+    "name": "Three of Wands",
+    "nameZh": "权杖三",
+    "image": "Wands03.jpg",
+    "keywords": ["扩展", "远见", "远方机会", "进展", "成长", "探索", "贸易", "远距离"],
+    "upright": "视野拓展、长期目标取得进展，也可能出现远方的机会。",
+    "reversed": "缺乏远见、进展延迟，或错失扩展的机会。"
+  },
+  {
+    "id": "four-of-wands",
+    "name": "Four of Wands",
+    "nameZh": "权杖四",
+    "image": "Wands04.jpg",
+    "keywords": ["庆祝", "和谐", "归属", "成就", "稳定", "社群", "基础", "里程碑"],
+    "upright": "努力与投入之后，迎来值得庆祝的成就和和谐时刻。",
+    "reversed": "庆祝取消、缺少和谐，或建立稳定有所延迟。"
+  },
+  {
+    "id": "five-of-wands",
+    "name": "Five of Wands",
+    "nameZh": "权杖五",
+    "image": "Wands05.jpg",
+    "keywords": ["竞争", "冲突", "挣扎", "分歧", "挑战", "创意张力", "较量", "阻碍"],
+    "upright": "竞争、创意碰撞与挑战，最终可能促成成长。",
+    "reversed": "回避冲突、内心紧张，或竞争走向破坏。"
+  },
+  {
+    "id": "six-of-wands",
+    "name": "Six of Wands",
+    "nameZh": "权杖六",
+    "image": "Wands06.jpg",
+    "keywords": ["胜利", "认可", "成功", "成就", "凯旋", "领导力", "信心", "赞誉"],
+    "upright": "克服挑战后获得胜利、公开认可与应得的成功。",
+    "reversed": "缺乏认可、独自取得胜利，或成果尚未被看见。"
+  },
+  {
+    "id": "seven-of-wands",
+    "name": "Seven of Wands",
+    "nameZh": "权杖七",
+    "image": "Wands07.jpg",
+    "keywords": ["防守", "坚持", "坚守立场", "勇气", "决心", "挑战", "竞争", "韧性"],
+    "upright": "守住自己的位置，在挑战面前坚定立场并坚持下去。",
+    "reversed": "过早放弃、被挑战压倒，或对自己的立场缺少信心。"
+  },
+  {
+    "id": "eight-of-wands",
+    "name": "Eight of Wands",
+    "nameZh": "权杖八",
+    "image": "Wands08.jpg",
+    "keywords": ["迅速行动", "移动", "快速进展", "速度", "沟通", "旅行", "势头", "紧迫"],
+    "upright": "行动迅速、进展加快，朝向目标的势头正在形成。",
+    "reversed": "进展延迟、沟通受阻，或对缓慢的进展失去耐心。"
+  },
+  {
+    "id": "nine-of-wands",
+    "name": "Nine of Wands",
+    "nameZh": "权杖九",
+    "image": "Wands09.jpg",
+    "keywords": ["韧性", "坚持", "戒备", "耐力", "决心", "最后冲刺", "带伤坚持", "边界"],
+    "upright": "面对挑战仍保持韧性，经受挫折后继续坚持并守护成果。",
+    "reversed": "过早放弃、过度防御，或被挑战压倒。"
+  },
+  {
+    "id": "ten-of-wands",
+    "name": "Ten of Wands",
+    "nameZh": "权杖十",
+    "image": "Wands10.jpg",
+    "keywords": ["负担", "责任", "辛劳", "完成", "压力过载", "投入", "努力的成果", "重担"],
+    "upright": "承担沉重责任，辛劳逐渐获得回报，重大目标接近完成。",
+    "reversed": "卸下负担、分担责任，或回避必要的承诺。"
+  },
+  {
+    "id": "page-of-wands",
+    "name": "Page of Wands",
+    "nameZh": "权杖侍从",
+    "image": "Wands11.jpg",
+    "keywords": ["热情", "探索", "创意讯息", "灵感", "新想法", "冒险", "随性", "年轻活力"],
+    "upright": "怀着热情探索，获得创作灵感或新机会的消息。",
+    "reversed": "缺乏方向、冲动，或创意讯息受阻。"
+  },
+  {
+    "id": "knight-of-wands",
+    "name": "Knight of Wands",
+    "nameZh": "权杖骑士",
+    "image": "Wands12.jpg",
+    "keywords": ["行动", "冒险", "冲动", "匆忙", "热情", "旅行", "变化", "无畏"],
+    "upright": "迅速行动，热情地追求目标，勇敢展开冒险。",
+    "reversed": "鲁莽、缺乏方向的冲动，或行动受到阻挠而挫败。"
+  },
+  {
+    "id": "queen-of-wands",
+    "name": "Queen of Wands",
+    "nameZh": "权杖皇后",
+    "image": "Wands13.jpg",
+    "keywords": ["自信", "决心", "魅力", "领导力", "温暖", "勇气", "独立", "活力"],
+    "upright": "自信而有魅力地带领他人，激励并吸引身边的人。",
+    "reversed": "缺乏自信、嫉妒，或利用魅力操控别人。"
+  },
+  {
+    "id": "king-of-wands",
+    "name": "King of Wands",
+    "nameZh": "权杖国王",
+    "image": "Wands14.jpg",
+    "keywords": ["领导才能", "远见", "权威", "激励", "创业者", "导师", "天生领袖", "创意愿景"],
+    "upright": "以成熟的领导力和远见，激励他人共同取得成就。",
+    "reversed": "专断、滥用权力，或难以有效带领他人。"
+  },
+  {
+    "id": "ace-of-cups",
+    "name": "Ace of Cups",
+    "nameZh": "圣杯王牌",
+    "image": "Cups01.jpg",
+    "keywords": [
+      "新的爱",
+      "情感开端",
+      "精神满足",
+      "慈悲",
+      "直觉",
+      "情感更新",
+      "无私之爱",
+      "情感充盈"
+    ],
+    "upright": "情感的新开始、精神觉醒，以及充盈的爱与慈悲。",
+    "reversed": "情感受阻、压抑感受，或难以表达与接受爱。"
+  },
+  {
+    "id": "two-of-cups",
+    "name": "Two of Cups",
+    "nameZh": "圣杯二",
+    "image": "Cups02.jpg",
+    "keywords": [
+      "伙伴关系",
+      "情感联结",
+      "情感和谐",
+      "相互吸引",
+      "灵魂伴侣",
+      "结合",
+      "合作",
+      "浪漫纽带"
+    ],
+    "upright": "和谐的伙伴关系、彼此联结，以及分享情感体验的喜悦。",
+    "reversed": "关系失和、伙伴关系失衡，或与他人疏离。"
+  },
+  {
+    "id": "three-of-cups",
+    "name": "Three of Cups",
+    "nameZh": "圣杯三",
+    "image": "Cups03.jpg",
+    "keywords": ["庆祝", "友谊", "社群", "创意合作", "社交和谐", "共享喜悦", "团队合作", "重聚"],
+    "upright": "庆祝友谊，享受群体联结与创意合作的喜悦。",
+    "reversed": "社交冲突、与群体疏离，或关系流于表面。"
+  },
+  {
+    "id": "four-of-cups",
+    "name": "Four of Cups",
+    "nameZh": "圣杯四",
+    "image": "Cups04.jpg",
+    "keywords": ["沉思", "淡漠", "错失机会", "情感退缩", "无聊", "内省", "不满", "重新评估"],
+    "upright": "沉思与情感上的退缩，需要重新评估眼下的状况和机会。",
+    "reversed": "重新获得动力、接纳机会，或走出淡漠和退缩的时期。"
+  },
+  {
+    "id": "five-of-cups",
+    "name": "Five of Cups",
+    "nameZh": "圣杯五",
+    "image": "Cups05.jpg",
+    "keywords": ["失落", "悲伤", "失望", "情感挫折", "后悔", "哀悼", "从失败学习", "继续前行"],
+    "upright": "失落、悲伤与失望之中，仍有复原的希望与可学习的经验。",
+    "reversed": "从失落中恢复、接受过去的失望，或怀着新的希望继续前行。"
+  },
+  {
+    "id": "six-of-cups",
+    "name": "Six of Cups",
+    "nameZh": "圣杯六",
+    "image": "Cups06.jpg",
+    "keywords": [
+      "怀旧",
+      "童年回忆",
+      "纯真",
+      "旧日联结",
+      "情感疗愈",
+      "简单快乐",
+      "重聚",
+      "内在小孩"
+    ],
+    "upright": "从怀旧、童年回忆与过去的联结中，找到疗愈与快乐。",
+    "reversed": "困在过去、难以前进，或过度美化回忆。"
+  },
+  {
+    "id": "seven-of-cups",
+    "name": "Seven of Cups",
+    "nameZh": "圣杯七",
+    "image": "Cups07.jpg",
+    "keywords": ["幻象", "多种选择", "一厢情愿", "幻想", "不切实际的梦想", "混乱", "诱惑", "聚焦"],
+    "upright": "选择太多而感到混乱，需要分辨现实可行的目标与幻想。",
+    "reversed": "逐渐看清现实、果断选择，或从幻象回到实际生活。"
+  },
+  {
+    "id": "eight-of-cups",
+    "name": "Eight of Cups",
+    "nameZh": "圣杯八",
+    "image": "Cups08.jpg",
+    "keywords": [
+      "精神追寻",
+      "离开",
+      "前行",
+      "寻找意义",
+      "情感退缩",
+      "内在旅程",
+      "不满",
+      "追寻真相"
+    ],
+    "upright": "离开已经无法满足自己的事物，踏上寻找更深意义的旅程。",
+    "reversed": "害怕放弃安全感、回避必要的改变，或回到曾经离开的事物。"
+  },
+  {
+    "id": "nine-of-cups",
+    "name": "Nine of Cups",
+    "nameZh": "圣杯九",
+    "image": "Cups09.jpg",
+    "keywords": [
+      "情感满足",
+      "满意",
+      "愿望实现",
+      "知足",
+      "感恩",
+      "情感丰盛",
+      "个人幸福",
+      "梦想达成"
+    ],
+    "upright": "情感满足、愿望实现，获得深切的个人喜悦与知足。",
+    "reversed": "内心仍不满足、期待不切实际，或快乐流于表面。"
+  },
+  {
+    "id": "ten-of-cups",
+    "name": "Ten of Cups",
+    "nameZh": "圣杯十",
+    "image": "Cups10.jpg",
+    "keywords": [
+      "情感圆满",
+      "家庭和谐",
+      "长久幸福",
+      "共同喜悦",
+      "情感传承",
+      "圆满之爱",
+      "家庭幸福",
+      "代际疗愈"
+    ],
+    "upright": "情感上的圆满、家庭和谐，以及长久幸福的实现。",
+    "reversed": "家庭不和、对关系抱有不切实际的期待，或和谐暂时被打断。"
+  },
+  {
+    "id": "page-of-cups",
+    "name": "Page of Cups",
+    "nameZh": "圣杯侍从",
+    "image": "Cups11.jpg",
+    "keywords": [
+      "情感讯息",
+      "创作灵感",
+      "直觉讯息",
+      "浪漫理想",
+      "艺术敏感",
+      "情感学习",
+      "感知成长",
+      "好奇惊喜"
+    ],
+    "upright": "情感消息、创作灵感，敞开心接纳直觉与新的情感体验。",
+    "reversed": "创造力受阻、情感不成熟，或忽视直觉讯息和内在指引。"
+  },
+  {
+    "id": "knight-of-cups",
+    "name": "Knight of Cups",
+    "nameZh": "圣杯骑士",
+    "image": "Cups12.jpg",
+    "keywords": [
+      "浪漫追求",
+      "情感行动",
+      "追随梦想",
+      "热情理想",
+      "艺术追求",
+      "情感勇气",
+      "体贴之爱",
+      "顺从内心"
+    ],
+    "upright": "追随内心，热情地追逐梦想，依据真实感受采取行动。",
+    "reversed": "梦想不切实际、情感操控，或只凭情绪行动而忽略后果。"
+  },
+  {
+    "id": "queen-of-cups",
+    "name": "Queen of Cups",
+    "nameZh": "圣杯皇后",
+    "image": "Cups13.jpg",
+    "keywords": [
+      "情绪掌握",
+      "敏锐直觉",
+      "体恤领导",
+      "滋养智慧",
+      "共情",
+      "精神母性",
+      "情感疗愈",
+      "直觉指引"
+    ],
+    "upright": "以成熟的情感和直觉智慧，通过体恤与理解照顾、疗愈他人。",
+    "reversed": "情绪过载、相互依赖，或为了帮助别人而失去边界。"
+  },
+  {
+    "id": "king-of-cups",
+    "name": "King of Cups",
+    "nameZh": "圣杯国王",
+    "image": "Cups14.jpg",
+    "keywords": [
+      "情感权威",
+      "平衡的领导",
+      "明智建议",
+      "情绪掌握",
+      "圆融指引",
+      "慈悲自制",
+      "成熟智慧",
+      "沉稳力量"
+    ],
+    "upright": "拥有成熟的情感与领导智慧，在动荡中仍保持冷静和平衡。",
+    "reversed": "情感操控、情绪变化影响领导，或压抑感受引发控制问题。"
+  },
+  {
+    "id": "ace-of-swords",
+    "name": "Ace of Swords",
+    "nameZh": "宝剑王牌",
+    "image": "Swords01.jpg",
+    "keywords": [
+      "思路清晰",
+      "突破洞见",
+      "真相显露",
+      "新想法",
+      "理智力量",
+      "拨开混乱",
+      "正义",
+      "思维突破"
+    ],
+    "upright": "思路清晰、获得突破性洞见，以真相拨开混乱。",
+    "reversed": "思维混乱、洞见受阻，或滥用理智的力量。"
+  },
+  {
+    "id": "two-of-swords",
+    "name": "Two of Swords",
+    "nameZh": "宝剑二",
+    "image": "Swords02.jpg",
+    "keywords": [
+      "僵局",
+      "艰难决定",
+      "回避",
+      "平衡视角",
+      "犹豫",
+      "思维阻碍",
+      "矛盾信息",
+      "审慎考虑"
+    ],
+    "upright": "陷入思维僵局，面对需要审慎考虑的决定，也需要看清被回避的事实。",
+    "reversed": "突破犹豫、逐渐明晰，或作出必要却艰难的选择。"
+  },
+  {
+    "id": "three-of-swords",
+    "name": "Three of Swords",
+    "nameZh": "宝剑三",
+    "image": "Swords03.jpg",
+    "keywords": ["心碎", "情感痛苦", "背叛", "悲伤", "哀愁", "分离", "失去", "需要疗愈"],
+    "upright": "心碎与情感痛苦，经历为失落或背叛而悲伤的必要过程。",
+    "reversed": "从心碎中疗愈、释放痛苦，或在情感创伤后继续前行。"
+  },
+  {
+    "id": "four-of-swords",
+    "name": "Four of Swords",
+    "nameZh": "宝剑四",
+    "image": "Swords04.jpg",
+    "keywords": ["休息", "精神恢复", "冥想", "策略性暂停", "心境平和", "沉思", "复原", "内在安宁"],
+    "upright": "让头脑休息、策略性暂停，在行动之前留出沉思的时间。",
+    "reversed": "坐立不安、难以休息，或结束沉思期准备行动。"
+  },
+  {
+    "id": "five-of-swords",
+    "name": "Five of Swords",
+    "nameZh": "宝剑五",
+    "image": "Swords05.jpg",
+    "keywords": [
+      "冲突",
+      "失败",
+      "空洞胜利",
+      "不惜代价争胜",
+      "欺凌",
+      "不公平优势",
+      "败局",
+      "徒劳凯旋"
+    ],
+    "upright": "冲突、失败，或付出过高代价才得到的空洞胜利。",
+    "reversed": "从失败学习、放下争胜的模式，或寻求和解。"
+  },
+  {
+    "id": "six-of-swords",
+    "name": "Six of Swords",
+    "nameZh": "宝剑六",
+    "image": "Swords06.jpg",
+    "keywords": ["过渡", "前行", "指引", "旅程", "离开困境", "平静水域", "渐进疗愈", "获得协助"],
+    "upright": "从困境过渡，在帮助与指引下逐渐恢复，走向较好的时期。",
+    "reversed": "抗拒改变、过渡延迟，或难以接受帮助。"
+  },
+  {
+    "id": "seven-of-swords",
+    "name": "Seven of Swords",
+    "nameZh": "宝剑七",
+    "image": "Swords07.jpg",
+    "keywords": ["欺瞒", "偷窃", "隐秘行动", "脱身", "策略思考", "机巧", "逃避后果", "头脑灵活"],
+    "upright": "欺瞒、偷窃、策略思考，或试图在有争议的行为后逃过追究。",
+    "reversed": "行为被揭穿、坦白，或选择诚实而放弃欺瞒。"
+  },
+  {
+    "id": "eight-of-swords",
+    "name": "Eight of Swords",
+    "nameZh": "宝剑八",
+    "image": "Swords08.jpg",
+    "keywords": [
+      "思维牢笼",
+      "受困感",
+      "自我限制信念",
+      "受害者心态",
+      "僵住",
+      "受限思考",
+      "无助",
+      "心理障碍"
+    ],
+    "upright": "被自我限制的信念束缚，觉得自己困在环境或思维模式里。",
+    "reversed": "突破思维束缚、看见可选的道路，或开始采取解脱的行动。"
+  },
+  {
+    "id": "nine-of-swords",
+    "name": "Nine of Swords",
+    "nameZh": "宝剑九",
+    "image": "Swords09.jpg",
+    "keywords": ["焦虑", "噩梦", "担忧", "精神痛苦", "过度思考", "绝望", "失眠", "心理折磨"],
+    "upright": "焦虑、担忧与精神痛苦，可能表现为难眠和反复的心理煎熬。",
+    "reversed": "从焦虑中恢复、克服担忧，或开始缓解精神痛苦。"
+  },
+  {
+    "id": "ten-of-swords",
+    "name": "Ten of Swords",
+    "nameZh": "宝剑十",
+    "image": "Swords10.jpg",
+    "keywords": [
+      "低谷",
+      "背叛",
+      "痛苦结束",
+      "彻底失败",
+      "触底",
+      "剧烈终结",
+      "新的黎明",
+      "痛中转变"
+    ],
+    "upright": "落入低谷、经历失败，同时也意味着痛苦周期接近结束，新的开始将有可能。",
+    "reversed": "从低谷恢复、避免彻底失败，或逐渐疗愈创伤。"
+  },
+  {
+    "id": "page-of-swords",
+    "name": "Page of Swords",
+    "nameZh": "宝剑侍从",
+    "image": "Swords11.jpg",
+    "keywords": ["清晰思考", "新想法", "沟通", "求知欲", "警觉", "学习", "思维敏捷", "新视角"],
+    "upright": "思路清晰、求知欲旺盛，渴望学习并交流新的想法。",
+    "reversed": "思绪分散、流言，或把聪明才智用于伤害他人。"
+  },
+  {
+    "id": "knight-of-swords",
+    "name": "Knight of Swords",
+    "nameZh": "宝剑骑士",
+    "image": "Swords12.jpg",
+    "keywords": [
+      "行动思维",
+      "勇往直前",
+      "冲动",
+      "直接沟通",
+      "理智勇气",
+      "仓促决定",
+      "坚定思考",
+      "迅速行动"
+    ],
+    "upright": "迅速将想法付诸行动，坚定前进，但可能缺少规划的耐心。",
+    "reversed": "鲁莽行动、沟通不佳，或思绪分散而引发问题。"
+  },
+  {
+    "id": "queen-of-swords",
+    "name": "Queen of Swords",
+    "nameZh": "宝剑皇后",
+    "image": "Swords13.jpg",
+    "keywords": [
+      "敏锐理智",
+      "清晰沟通",
+      "独立",
+      "明智辨别",
+      "理智权威",
+      "坦诚直接",
+      "思路清楚",
+      "果断"
+    ],
+    "upright": "凭借敏锐的理智、清晰的沟通与人生经验作出明智判断。",
+    "reversed": "苛刻批评、冷漠沟通，或用聪明才智攻击别人。"
+  },
+  {
+    "id": "king-of-swords",
+    "name": "King of Swords",
+    "nameZh": "宝剑国王",
+    "image": "Swords14.jpg",
+    "keywords": [
+      "理智权威",
+      "智性领导",
+      "正义",
+      "沟通技巧",
+      "逻辑思考",
+      "公正判断",
+      "策略规划",
+      "权威智慧"
+    ],
+    "upright": "以理智和领导力，通过逻辑分析作出公平的决定。",
+    "reversed": "专断、判断苛刻，或滥用理智的力量。"
+  },
+  {
+    "id": "ace-of-pentacles",
+    "name": "Ace of Pentacles",
+    "nameZh": "星币王牌",
+    "image": "Pentacles01.jpg",
+    "keywords": [
+      "新机会",
+      "财务开端",
+      "物质显化",
+      "繁荣种子",
+      "丰盛潜能",
+      "实际基础",
+      "现实回报",
+      "具体成果"
+    ],
+    "upright": "出现一个有利于物质积累和财务发展的新机会。",
+    "reversed": "错失机会、财务决定失当，或缺少切实规划。"
+  },
+  {
+    "id": "two-of-pentacles",
+    "name": "Two of Pentacles",
+    "nameZh": "星币二",
+    "image": "Pentacles02.jpg",
+    "keywords": ["平衡", "资源调配", "适应", "多任务", "灵活性", "时间管理", "优先级", "善用资源"],
+    "upright": "在多项责任之间灵活调配，保持平衡与适应能力。",
+    "reversed": "责任过多而难以承受、时间管理不佳，或没有明确优先级。"
+  },
+  {
+    "id": "three-of-pentacles",
+    "name": "Three of Pentacles",
+    "nameZh": "星币三",
+    "image": "Pentacles03.jpg",
+    "keywords": [
+      "团队合作",
+      "协作",
+      "技能成长",
+      "匠心",
+      "学徒",
+      "共同愿景",
+      "职业成长",
+      "专业能力"
+    ],
+    "upright": "通过团队协作、共享技能与专业知识取得成果。",
+    "reversed": "缺少团队合作、协作冲突，或需要伙伴时仍独自工作。"
+  },
+  {
+    "id": "four-of-pentacles",
+    "name": "Four of Pentacles",
+    "nameZh": "星币四",
+    "image": "Pentacles04.jpg",
+    "keywords": ["安全感", "控制", "节制资源", "占有", "稳定", "囤积", "保护", "物质依恋"],
+    "upright": "关注安全与稳定，谨慎保留并掌控资源。",
+    "reversed": "过度物质化、贪婪，或走向挥霍与不安全感的另一极端。"
+  },
+  {
+    "id": "five-of-pentacles",
+    "name": "Five of Pentacles",
+    "nameZh": "星币五",
+    "image": "Pentacles05.jpg",
+    "keywords": [
+      "财务困难",
+      "匮乏",
+      "孤立",
+      "精神贫乏",
+      "求助",
+      "物质损失",
+      "被排斥感",
+      "暂时挫折"
+    ],
+    "upright": "经历财务或精神上的匮乏，需要寻求支持与帮助。",
+    "reversed": "从困难中恢复、获得帮助，或开始克服眼前困境。"
+  },
+  {
+    "id": "six-of-pentacles",
+    "name": "Six of Pentacles",
+    "nameZh": "星币六",
+    "image": "Pentacles06.jpg",
+    "keywords": ["慷慨", "慈善", "分享财富", "平衡交换", "给予", "接受", "感恩", "群体支持"],
+    "upright": "给予与接受相对平衡，慷慨地与别人分享富足。",
+    "reversed": "给予与接受失衡、帮助附带条件，或权力被滥用。"
+  },
+  {
+    "id": "seven-of-pentacles",
+    "name": "Seven of Pentacles",
+    "nameZh": "星币七",
+    "image": "Pentacles07.jpg",
+    "keywords": ["投入", "耐心", "长远眼光", "评估", "毅力", "等待成果", "耕耘", "检视进展"],
+    "upright": "长期投入开始显现成果，需要耐心等待并评估进展。",
+    "reversed": "对结果缺少耐心、长期规划不佳，或过早放弃项目。"
+  },
+  {
+    "id": "eight-of-pentacles",
+    "name": "Eight of Pentacles",
+    "nameZh": "星币八",
+    "image": "Pentacles08.jpg",
+    "keywords": ["工艺", "投入", "技能精进", "努力", "学徒", "专注", "品质", "完美主义"],
+    "upright": "专注付出并留意细节，持续精进自己的技艺。",
+    "reversed": "完美主义、缺少专注，或工作品质不佳而影响成果。"
+  },
+  {
+    "id": "nine-of-pentacles",
+    "name": "Nine of Pentacles",
+    "nameZh": "星币九",
+    "image": "Pentacles09.jpg",
+    "keywords": ["丰盛", "奢享", "自给自足", "独立", "精致", "物质成功", "个人成就", "优裕生活"],
+    "upright": "享受劳动带来的成果、丰盛和独立自足的生活。",
+    "reversed": "财务受挫、依赖他人，或难以享受已经获得的成就。"
+  },
+  {
+    "id": "ten-of-pentacles",
+    "name": "Ten of Pentacles",
+    "nameZh": "星币十",
+    "image": "Pentacles10.jpg",
+    "keywords": ["传承", "家族财富", "继承", "代际成果", "长期保障", "传统", "完成", "持久繁荣"],
+    "upright": "物质目标完成，建立能够传承的财富与长久保障。",
+    "reversed": "家人因金钱冲突、财富损失，或难以建立长期保障。"
+  },
+  {
+    "id": "page-of-pentacles",
+    "name": "Page of Pentacles",
+    "nameZh": "星币侍从",
+    "image": "Pentacles11.jpg",
+    "keywords": ["学生", "实际学习", "机会", "落实", "研习", "新尝试", "财务学习", "物质关注"],
+    "upright": "以学习者的态度接触实用知识，出现学习机会或有关现实成果的消息。",
+    "reversed": "学习缺乏专注、错失机会，或处理现实事务的方法不切实际。"
+  },
+  {
+    "id": "knight-of-pentacles",
+    "name": "Knight of Pentacles",
+    "nameZh": "星币骑士",
+    "image": "Pentacles12.jpg",
+    "keywords": ["努力", "日常规律", "坚持", "循序渐进", "可靠", "耐心", "稳步前进", "投入"],
+    "upright": "通过努力、规律与持续投入，循序渐进地朝目标前进。",
+    "reversed": "停滞、固执，或过度拘泥惯例而缺乏进展与灵活性。"
+  },
+  {
+    "id": "queen-of-pentacles",
+    "name": "Queen of Pentacles",
+    "nameZh": "星币皇后",
+    "image": "Pentacles13.jpg",
+    "keywords": [
+      "滋养",
+      "实践智慧",
+      "丰盛",
+      "慷慨",
+      "大地母亲",
+      "物质舒适",
+      "照顾供给",
+      "家庭和谐"
+    ],
+    "upright": "以实践智慧、慷慨与切实照料，为自己和他人培育丰盛。",
+    "reversed": "忽略自我照顾、财务缺乏安全感，或照料别人时过度控制。"
+  },
+  {
+    "id": "king-of-pentacles",
+    "name": "King of Pentacles",
+    "nameZh": "星币国王",
+    "image": "Pentacles14.jpg",
+    "keywords": [
+      "财富",
+      "商业成功",
+      "领导力",
+      "财务掌握",
+      "物质丰盛",
+      "创业",
+      "实践智慧",
+      "慷慨权威"
+    ],
+    "upright": "以成功的领导、商业判断与慷慨，成熟地管理物质资源。",
+    "reversed": "贪婪、腐败，或为自私和伤害性的目的滥用财富与权力。"
+  }
+]

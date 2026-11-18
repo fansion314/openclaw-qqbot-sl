@@ -65,6 +65,7 @@ import type { ImageLinks } from "./image-links.js";
 import { UserDirectory } from "./users.js";
 import { prepareInboundImages, stageInboundImage } from "./inbound-images.js";
 import { StickerStore } from "./stickers.js";
+import { drawTarot, TAROT_TOOL_NAME } from "./tarot.js";
 
 interface RunningAccount {
   users: UserDirectory;
@@ -87,6 +88,7 @@ const toolRoutes = new Map<
     assertCurrent?: () => void;
     beforeEffect?: () => void;
     onEffect?: (kind: string) => void;
+    requestAuthors: ReadonlyMap<string, string>;
   }
 >();
 function live(accountId?: string | null): RunningAccount {
@@ -1195,6 +1197,13 @@ export const snowlumaPlugin: ChannelPlugin<ResolvedAccount> = {
             accountId: account.accountId,
             target: t,
             assertCurrent,
+            requestAuthors: new Map(
+              batch.trigger === "idle"
+                ? []
+                : batch.events
+                    .filter((event) => !event.self && event.human !== false)
+                    .map((event) => [event.id, event.userId] as const),
+            ),
             beforeEffect: () => {
               assertCurrent();
               control.accept();
@@ -1738,6 +1747,78 @@ function patchAccount(
 
 /** Tools capture a host-owned active route, never a model-selected conversation. */
 export function registerConversationTools(api: OpenClawPluginApi): void {
+  api.registerTool(
+    (ctx) => {
+      const sessionKey = ctx.sessionKey;
+      if (ctx.messageChannel !== CHANNEL_ID || !sessionKey) return null;
+      try {
+        assertRionOrigin({ agentId: ctx.agentId, sessionKey });
+      } catch {
+        return null;
+      }
+      const route = toolRoutes.get(sessionKey);
+      if (!route?.requestAuthors.size) return null;
+      const assertCurrent = () => {
+        ctx.assertInvocationCurrent?.();
+        if (toolRoutes.get(sessionKey) !== route) throw new Error("Conversation run has ended");
+        route.assertCurrent?.();
+        const cfg = ctx.getRuntimeConfig?.() ?? ctx.runtimeConfig ?? ctx.config;
+        if (!cfg) throw new Error("Runtime configuration unavailable");
+        isAllowed(cfg, route.accountId, route.target);
+        return cfg;
+      };
+      const tool: AnyAgentTool = {
+        name: TAROT_TOOL_NAME,
+        label: "璃音三张塔罗",
+        description:
+          "为当前 QQ 消息的发起人抽三张塔罗，返回真实正逆位、牌意和可发送的图。按 rion-tarot 技能选定牌阵后 draw。追问时用 recall，提供原占卜消息与本次追问的 ID。",
+        parameters: {
+          type: "object",
+          properties: {
+            operation: { type: "string", enum: ["draw", "recall"] },
+            spread: { type: "string", enum: ["timeline", "advice"] },
+            message_id: { type: "string", pattern: "^-?[0-9]+$" },
+            followup_message_id: { type: "string", pattern: "^-?[0-9]+$" },
+          },
+          required: ["message_id"],
+          additionalProperties: false,
+        } as AnyAgentTool["parameters"],
+        execute: async (_id, params, signal) => {
+          const cfg = assertCurrent();
+          signal?.throwIfAborted();
+          const {
+            operation = "draw",
+            spread,
+            message_id: messageId,
+            followup_message_id: followupId,
+          } = params as Record<string, unknown>;
+          if (operation !== "draw" && operation !== "recall") throw new Error("未知的塔罗操作。");
+          if (typeof messageId !== "string" || !/^-?[0-9]+$/.test(messageId))
+            throw new Error("请提供真实的 QQ 消息 ID。");
+          if (operation === "draw" && spread !== "timeline" && spread !== "advice")
+            throw new Error("抽牌前请选择三张牌阵。");
+          const currentId = operation === "draw" ? messageId : followupId;
+          const author = typeof currentId === "string" && route.requestAuthors.get(currentId);
+          if (!author) throw new Error("请使用本轮发起占卜或追问的真实 QQ 消息 ID。");
+          const result = await drawTarot({
+            workspaceDir: getRuntime().agent.resolveAgentWorkspaceDir(cfg, TARGET_AGENT_ID),
+            scope: JSON.stringify([keyFor(route.accountId, route.target), author]),
+            messageId,
+            spread:
+              operation === "draw" && (spread === "timeline" || spread === "advice")
+                ? spread
+                : undefined,
+            signal,
+          });
+          assertCurrent();
+          signal?.throwIfAborted();
+          return { content: [{ type: "text", text: JSON.stringify(result) }], details: result };
+        },
+      };
+      return tool;
+    },
+    { name: TAROT_TOOL_NAME, optional: true },
+  );
   api.on("before_tool_call", async (event, ctx) => {
     if (ctx.agentId !== TARGET_AGENT_ID || !ctx.sessionKey) return;
     const route = toolRoutes.get(ctx.sessionKey);

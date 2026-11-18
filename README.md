@@ -15,7 +15,7 @@ pnpm install --frozen-lockfile --ignore-scripts
 pnpm check
 pnpm pack
 # 在运行 OpenClaw 的主机安装生成的包：
-openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.9.tgz
+openclaw plugins install ./fansionia-openclaw-qqbot-snowluma-0.1.10.tgz
 ```
 
 本地开发可在构建后使用 `openclaw plugins install --link .`。安装包包含已编译 JavaScript，不依赖主机即时编译 TypeScript。
@@ -35,6 +35,14 @@ Docker 内监听地址和主机可访问地址可能不同：OpenClaw 在主机�
 自主模式群聊默认安静1小时后要求 agent 用一条简短消息主动开启话题。此次仅提供开场任务 prompt，不追加聊天缓存、用户表、文件或任何附件；沿用 agent 自身人格和会话。每段安静期最多一次，真人新消息会取消过时开场并重新计时。宿主接纳前且确认未发送的调用失败可重试；已接纳或发送结果不确定时不自动重放。可用 `activeHours` 和 `timeZone` 限定时段。私聊、mention模式群默认不开启。
 
 工具权限沿用 OpenClaw。请使用现有 agent 绑定和工具策略管理宿主机能力；此插件不会将历史正文作为独立的管理命令。不同QQ会话默认独立路由。
+
+### 璃音的三张牌占卜
+
+将 `examples/rion/skills/rion-tarot/` 复制到璃音工作区的 `skills/`，并在 Rion 的 `tools.alsoAllow` 加入 `snowluma_tarot_draw`。例如在群里 @ 璃音说「帮我占卜下，这周面试怎么准备」。璃音按问题选择牌阵，先发送合图，再结合问题解读三张牌。
+
+牌库、中文牌意和图像处理随插件离线运行。[牌图和牌意署名](assets/tarot/NOTICE.md)
+
+图片存放在 Rion 工作区的 `media/outbound/tarot/`。如果设置了 `mediaRoots`，请把该目录的绝对路径加入允许列表。占卜结果可在 24 小时内回看，过期文件在后续工具调用时清理。
 
 ## 配置项
 

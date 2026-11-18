@@ -1,0 +1,2742 @@
+{
+  "title": "Tarot card data: all 78 cards",
+  "version": "1.0.0",
+  "updated": "2026-11-12",
+  "source": "https://tarostarot.com/tarot-card-data",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Tarot card data by Taro's Tarot (https://tarostarot.com/tarot-card-data), CC BY 4.0",
+  "images": "Card images: scans of the 1909 Rider-Waite-Smith deck (Pamela Colman Smith), public domain.",
+  "cards": [
+    {
+      "id": "the-fool",
+      "name": "The Fool",
+      "number": 0,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "new beginnings",
+        "innocence",
+        "spontaneity",
+        "free spirit",
+        "adventure",
+        "faith",
+        "potential",
+        "risk"
+      ],
+      "upright": "New beginnings, unlimited potential, and a leap of faith into the unknown.",
+      "reversed": "Recklessness, poor judgment, or fear of taking necessary risks.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "A yes for the leap itself; the landing is not shown yet"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Uranus",
+        "sign": "Aquarius",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/00-TheFool.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-fool"
+    },
+    {
+      "id": "the-magician",
+      "name": "The Magician",
+      "number": 1,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "manifestation",
+        "willpower",
+        "resourcefulness",
+        "power",
+        "inspired action",
+        "concentration",
+        "skill",
+        "transformation"
+      ],
+      "upright": "Manifestation, resourcefulness, and the power to create your reality through focused will.",
+      "reversed": "Manipulation, illusion, or untapped potential waiting to be properly channeled.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: everything you need is already on the table"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Mercury",
+        "sign": "Gemini/Virgo",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/01-TheMagician.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-magician"
+    },
+    {
+      "id": "the-high-priestess",
+      "name": "The High Priestess",
+      "number": 2,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "intuition",
+        "sacred knowledge",
+        "divine feminine",
+        "subconscious",
+        "mystery",
+        "spiritual insight",
+        "inner wisdom",
+        "receptivity"
+      ],
+      "upright": "Trust your intuition and look beyond the obvious to find hidden truths and inner wisdom.",
+      "reversed": "Blocked intuition, revealed secrets, or ignoring your inner voice.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, but the part you cannot see yet decides how"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Moon",
+        "sign": "Cancer",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/02-TheHighPriestess.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-high-priestess"
+    },
+    {
+      "id": "the-empress",
+      "name": "The Empress",
+      "number": 3,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "fertility",
+        "femininity",
+        "beauty",
+        "nature",
+        "abundance",
+        "nurturing",
+        "creativity",
+        "sensuality"
+      ],
+      "upright": "Abundance, nurturing, fertility, and the flourishing of all creative endeavors.",
+      "reversed": "Creative blocks, neglect, codependence, or smothering behavior.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: growth, comfort and things coming to fruit"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Venus",
+        "sign": "Taurus/Libra",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/03-TheEmpress.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-empress"
+    },
+    {
+      "id": "the-emperor",
+      "name": "The Emperor",
+      "number": 4,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "authority",
+        "establishment",
+        "structure",
+        "father figure",
+        "stability",
+        "power",
+        "protection",
+        "control"
+      ],
+      "upright": "Authority, structure, leadership, and the establishment of order from chaos.",
+      "reversed": "Tyranny, rigidity, domination, or alternatively, weakness and lack of discipline.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, through structure, rules and steady authority"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Mars",
+        "sign": "Aries",
+        "decan": null,
+        "dates": "March 21 - April 19",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/04-TheEmperor.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-emperor"
+    },
+    {
+      "id": "the-hierophant",
+      "name": "The Hierophant",
+      "number": 5,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "spiritual wisdom",
+        "religious beliefs",
+        "conformity",
+        "tradition",
+        "institutions",
+        "teaching",
+        "guidance",
+        "ceremony"
+      ],
+      "upright": "Traditional values, spiritual guidance, education, and conformity to established systems.",
+      "reversed": "Challenging tradition, unconventional approaches, or rigid dogma blocking growth.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes by the established route, no to shortcuts"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Venus",
+        "sign": "Taurus",
+        "decan": null,
+        "dates": "April 20 - May 20",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/05-TheHierophant.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-hierophant"
+    },
+    {
+      "id": "the-lovers",
+      "name": "The Lovers",
+      "number": 6,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "love",
+        "relationships",
+        "choices",
+        "harmony",
+        "union",
+        "values",
+        "partnerships",
+        "attraction"
+      ],
+      "upright": "Love, harmony, partnerships, and important choices between different paths or values.",
+      "reversed": "Relationship disharmony, poor choices, or internal conflicts about values.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes when the choice is honest; the card is a choice as much as a match"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Mercury",
+        "sign": "Gemini",
+        "decan": null,
+        "dates": "May 21 - June 20",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/06-TheLovers.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-lovers"
+    },
+    {
+      "id": "the-chariot",
+      "name": "The Chariot",
+      "number": 7,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "willpower",
+        "determination",
+        "victory",
+        "control",
+        "direction",
+        "triumph",
+        "focus",
+        "discipline"
+      ],
+      "upright": "Victory through willpower, determination, and the ability to control opposing forces.",
+      "reversed": "Lack of control, scattered energy, or being pulled in conflicting directions.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, won by will and keeping both hands on the reins"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Moon",
+        "sign": "Cancer",
+        "decan": null,
+        "dates": "June 21 - July 22",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/07-TheChariot.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-chariot"
+    },
+    {
+      "id": "strength",
+      "name": "Strength",
+      "number": 8,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "inner strength",
+        "courage",
+        "patience",
+        "compassion",
+        "self-control",
+        "gentle power",
+        "perseverance",
+        "taming"
+      ],
+      "upright": "Inner strength, courage, and the power to overcome challenges through patience and love.",
+      "reversed": "Lack of inner strength, being overwhelmed, or misuse of power.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "A patient yes: steady nerve wins over force"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Sun",
+        "sign": "Leo",
+        "decan": null,
+        "dates": "July 23 - August 22",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/08-Strength.webp",
+      "url": "https://tarostarot.com/tarot-cards/strength"
+    },
+    {
+      "id": "the-hermit",
+      "name": "The Hermit",
+      "number": 9,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "introspection",
+        "soul searching",
+        "inner guidance",
+        "wisdom",
+        "solitude",
+        "meditation",
+        "enlightenment",
+        "spiritual teacher"
+      ],
+      "upright": "Soul searching, seeking inner wisdom, and the need for solitude and introspection.",
+      "reversed": "Isolation, stubbornness, or avoiding necessary inner work.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No for now: the lantern is for looking, not leaping"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Mercury",
+        "sign": "Virgo",
+        "decan": null,
+        "dates": "August 23 - September 22",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/09-TheHermit.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-hermit"
+    },
+    {
+      "id": "wheel-of-fortune",
+      "name": "Wheel of Fortune",
+      "number": 10,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "destiny",
+        "fate",
+        "cycles",
+        "turning point",
+        "karma",
+        "luck",
+        "change",
+        "divine timing"
+      ],
+      "upright": "A turning point in life, good fortune, and alignment with destiny.",
+      "reversed": "Setbacks, resistance to change, or feeling out of control with life's cycles.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: the turn is in your favour, so move while it is"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Jupiter",
+        "sign": "Sagittarius/Pisces",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/10-WheelOfFortune.webp",
+      "url": "https://tarostarot.com/tarot-cards/wheel-of-fortune"
+    },
+    {
+      "id": "justice",
+      "name": "Justice",
+      "number": 11,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "balance",
+        "fairness",
+        "karma",
+        "truth",
+        "accountability",
+        "legal matters",
+        "cause and effect",
+        "integrity"
+      ],
+      "upright": "Balance, fairness, accountability, and the law of cause and effect in action.",
+      "reversed": "Injustice, imbalance, lack of accountability, or avoiding consequences.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes if your case is fair; the scales do not take sides"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Venus",
+        "sign": "Libra",
+        "decan": null,
+        "dates": "September 23 - October 22",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/11-Justice.webp",
+      "url": "https://tarostarot.com/tarot-cards/justice"
+    },
+    {
+      "id": "the-hanged-man",
+      "name": "The Hanged Man",
+      "number": 12,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "surrender",
+        "sacrifice",
+        "letting go",
+        "new perspective",
+        "suspension",
+        "waiting",
+        "spiritual insight",
+        "enlightenment"
+      ],
+      "upright": "Surrender, sacrifice, gaining new perspective through letting go and waiting.",
+      "reversed": "Resistance to surrender, feeling stuck, or unnecessary self-sacrifice.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No for action; yes only to waiting and seeing differently"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Neptune",
+        "sign": "Pisces",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/12-TheHangedMan.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-hanged-man"
+    },
+    {
+      "id": "death",
+      "name": "Death",
+      "number": 13,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "transformation",
+        "endings",
+        "rebirth",
+        "renewal",
+        "release",
+        "change",
+        "transition",
+        "metamorphosis"
+      ],
+      "upright": "Transformation, necessary endings, and rebirth into a new phase of life.",
+      "reversed": "Resistance to change, fear of transformation, or incomplete endings.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No to keeping things as they are; the change is the answer"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Pluto",
+        "sign": "Scorpio",
+        "decan": null,
+        "dates": "October 23 - November 21",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/13-Death.webp",
+      "url": "https://tarostarot.com/tarot-cards/death"
+    },
+    {
+      "id": "temperance",
+      "name": "Temperance",
+      "number": 14,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "balance",
+        "moderation",
+        "patience",
+        "harmony",
+        "healing",
+        "blending",
+        "middle path",
+        "alchemy"
+      ],
+      "upright": "Balance, moderation, patience, and the harmonious blending of opposing forces.",
+      "reversed": "Imbalance, extremes, impatience, or inability to find harmony.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, through patience, blending and the middle path"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Jupiter",
+        "sign": "Sagittarius",
+        "decan": null,
+        "dates": "November 22 - December 21",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/14-Temperance.webp",
+      "url": "https://tarostarot.com/tarot-cards/temperance"
+    },
+    {
+      "id": "the-devil",
+      "name": "The Devil",
+      "number": 15,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "bondage",
+        "temptation",
+        "materialism",
+        "addiction",
+        "illusion",
+        "shadow self",
+        "limitation",
+        "desire"
+      ],
+      "upright": "Bondage to material desires, temptation, and the illusion of being trapped.",
+      "reversed": "Breaking free from bondage, overcoming addiction, or recognizing personal freedom.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: the chains are loose, but you are still wearing them"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Saturn",
+        "sign": "Capricorn",
+        "decan": null,
+        "dates": "December 22 - January 19",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/15-TheDevil.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-devil"
+    },
+    {
+      "id": "the-tower",
+      "name": "The Tower",
+      "number": 16,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "sudden change",
+        "upheaval",
+        "awakening",
+        "liberation",
+        "revelation",
+        "destruction",
+        "breakthrough",
+        "shock"
+      ],
+      "upright": "Sudden change, spiritual awakening, and liberation through destruction of false foundations.",
+      "reversed": "Resistance to change, avoiding necessary upheaval, or gradual transformation.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: what is being asked about will not survive the shock"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Mars",
+        "sign": "Aries/Scorpio",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/16-TheTower.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-tower"
+    },
+    {
+      "id": "the-star",
+      "name": "The Star",
+      "number": 17,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "hope",
+        "inspiration",
+        "spiritual guidance",
+        "healing",
+        "renewal",
+        "faith",
+        "divine connection",
+        "wishes fulfilled"
+      ],
+      "upright": "Hope, inspiration, spiritual guidance, and renewed faith after difficult times.",
+      "reversed": "Lack of faith, disconnection from guidance, or dreams deferred.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: hope with a reason behind it"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Uranus",
+        "sign": "Aquarius",
+        "decan": null,
+        "dates": "January 20 - February 18",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/17-TheStar.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-star"
+    },
+    {
+      "id": "the-moon",
+      "name": "The Moon",
+      "number": 18,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "illusion",
+        "intuition",
+        "unconscious",
+        "dreams",
+        "fear",
+        "deception",
+        "psychic abilities",
+        "hidden truths"
+      ],
+      "upright": "Illusion, intuition, unconscious fears, and navigating through uncertainty.",
+      "reversed": "Clarity emerging from confusion, overcoming illusions, or suppressed intuition.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No for now: nothing here is what it looks like"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Neptune",
+        "sign": "Pisces",
+        "decan": null,
+        "dates": "February 19 - March 20",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/18-TheMoon.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-moon"
+    },
+    {
+      "id": "the-sun",
+      "name": "The Sun",
+      "number": 19,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "joy",
+        "success",
+        "vitality",
+        "enlightenment",
+        "optimism",
+        "achievement",
+        "clarity",
+        "celebration"
+      ],
+      "upright": "Joy, success, vitality, and the achievement of happiness and enlightenment.",
+      "reversed": "Temporary clouds over success, delayed happiness, or difficulty accessing joy.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: the clearest yes in the deck"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Sun",
+        "sign": "Leo",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/19-TheSun.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-sun"
+    },
+    {
+      "id": "judgement",
+      "name": "Judgement",
+      "number": 20,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "rebirth",
+        "inner calling",
+        "awakening",
+        "evaluation",
+        "forgiveness",
+        "redemption",
+        "spiritual renewal",
+        "higher purpose"
+      ],
+      "upright": "Spiritual rebirth, inner calling, awakening to higher purpose, and divine evaluation.",
+      "reversed": "Resistance to spiritual calling, harsh self-judgment, or delayed awakening.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: a call you already know how to answer"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Pluto",
+        "sign": "Scorpio",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/20-Judgement.webp",
+      "url": "https://tarostarot.com/tarot-cards/judgement"
+    },
+    {
+      "id": "the-world",
+      "name": "The World",
+      "number": 21,
+      "arcana": "major",
+      "suit": null,
+      "rank": null,
+      "keywords": [
+        "completion",
+        "fulfillment",
+        "achievement",
+        "wholeness",
+        "cosmic consciousness",
+        "integration",
+        "mastery",
+        "enlightenment"
+      ],
+      "upright": "Completion, fulfillment, achievement of goals, and cosmic consciousness.",
+      "reversed": "Incomplete goals, seeking external completion, or resistance to wholeness.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: completion, success and the circle closing"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Saturn",
+        "sign": "Capricorn/Aquarius",
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/21-TheWorld.webp",
+      "url": "https://tarostarot.com/tarot-cards/the-world"
+    },
+    {
+      "id": "ace-of-wands",
+      "name": "Ace of Wands",
+      "number": 1,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "ace",
+      "keywords": [
+        "creative spark",
+        "new beginnings",
+        "inspiration",
+        "potential",
+        "passion",
+        "initiative",
+        "raw energy",
+        "breakthrough"
+      ],
+      "upright": "A new creative or spiritual beginning filled with passionate energy and unlimited potential.",
+      "reversed": "Blocked creativity, false starts, or misdirected energy preventing progress.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: a new spark with real growth on it"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands01.webp",
+      "url": "https://tarostarot.com/tarot-cards/ace-of-wands"
+    },
+    {
+      "id": "two-of-wands",
+      "name": "Two of Wands",
+      "number": 2,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "two",
+      "keywords": [
+        "personal power",
+        "planning",
+        "future planning",
+        "control",
+        "expansion",
+        "discovery",
+        "long-term view",
+        "ambition"
+      ],
+      "upright": "Planning for the future, taking control of your destiny, and preparing for expansion.",
+      "reversed": "Lack of planning, fear of change, or waiting too long to take action.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, once you stop surveying and choose a direction"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Mars",
+        "sign": "Aries",
+        "decan": 1,
+        "dates": "March 21-30",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands02.webp",
+      "url": "https://tarostarot.com/tarot-cards/two-of-wands"
+    },
+    {
+      "id": "three-of-wands",
+      "name": "Three of Wands",
+      "number": 3,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "three",
+      "keywords": [
+        "expansion",
+        "foresight",
+        "overseas opportunities",
+        "progress",
+        "growth",
+        "exploration",
+        "trade",
+        "long-distance"
+      ],
+      "upright": "Expansion of horizons, progress on long-term goals, and opportunities from afar.",
+      "reversed": "Lack of foresight, delays in progress, or missed opportunities for expansion.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: what you sent out is on its way back"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Sun",
+        "sign": "Aries",
+        "decan": 2,
+        "dates": "March 31 - April 10",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands03.webp",
+      "url": "https://tarostarot.com/tarot-cards/three-of-wands"
+    },
+    {
+      "id": "four-of-wands",
+      "name": "Four of Wands",
+      "number": 4,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "four",
+      "keywords": [
+        "celebration",
+        "harmony",
+        "homecoming",
+        "achievement",
+        "stability",
+        "community",
+        "foundation",
+        "milestone"
+      ],
+      "upright": "A time of celebration, harmony, and achievement after hard work and dedication.",
+      "reversed": "Cancelled celebrations, lack of harmony, or delays in achieving stability.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: celebration, stability and a place to come home to"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Venus",
+        "sign": "Aries",
+        "decan": 3,
+        "dates": "April 11-20",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands04.webp",
+      "url": "https://tarostarot.com/tarot-cards/four-of-wands"
+    },
+    {
+      "id": "five-of-wands",
+      "name": "Five of Wands",
+      "number": 5,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "five",
+      "keywords": [
+        "competition",
+        "conflict",
+        "struggle",
+        "disagreement",
+        "challenge",
+        "creative tension",
+        "rivalry",
+        "obstacles"
+      ],
+      "upright": "Competition, creative tension, and challenges that ultimately lead to growth.",
+      "reversed": "Avoiding conflict, inner tension, or competition turning destructive.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: too many hands on the wand, no agreed direction"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Saturn",
+        "sign": "Leo",
+        "decan": 1,
+        "dates": "July 22 - August 1",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands05.webp",
+      "url": "https://tarostarot.com/tarot-cards/five-of-wands"
+    },
+    {
+      "id": "six-of-wands",
+      "name": "Six of Wands",
+      "number": 6,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "six",
+      "keywords": [
+        "victory",
+        "recognition",
+        "success",
+        "achievement",
+        "triumph",
+        "leadership",
+        "confidence",
+        "acclaim"
+      ],
+      "upright": "Victory, public recognition, and well-deserved success after overcoming challenges.",
+      "reversed": "Lack of recognition, private victories, or success without acknowledgment.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: a win, and a win other people can see"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Jupiter",
+        "sign": "Leo",
+        "decan": 2,
+        "dates": "August 2-11",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands06.webp",
+      "url": "https://tarostarot.com/tarot-cards/six-of-wands"
+    },
+    {
+      "id": "seven-of-wands",
+      "name": "Seven of Wands",
+      "number": 7,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "seven",
+      "keywords": [
+        "defense",
+        "perseverance",
+        "standing ground",
+        "courage",
+        "determination",
+        "challenge",
+        "competition",
+        "resilience"
+      ],
+      "upright": "Defending your position, standing your ground, and persevering against challenges.",
+      "reversed": "Giving up too easily, being overwhelmed by challenges, or lack of confidence in your position.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, if you hold your ground; the high ground is yours"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Mars",
+        "sign": "Leo",
+        "decan": 3,
+        "dates": "August 12-22",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands07.webp",
+      "url": "https://tarostarot.com/tarot-cards/seven-of-wands"
+    },
+    {
+      "id": "eight-of-wands",
+      "name": "Eight of Wands",
+      "number": 8,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "eight",
+      "keywords": [
+        "swift action",
+        "movement",
+        "rapid progress",
+        "speed",
+        "communication",
+        "travel",
+        "momentum",
+        "urgency"
+      ],
+      "upright": "Swift action, rapid progress, and momentum building toward your goals.",
+      "reversed": "Delays, blocked communication, or impatience with slow progress.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, and fast: things are already in motion"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Mercury",
+        "sign": "Sagittarius",
+        "decan": 1,
+        "dates": "November 23 - December 2",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands08.webp",
+      "url": "https://tarostarot.com/tarot-cards/eight-of-wands"
+    },
+    {
+      "id": "nine-of-wands",
+      "name": "Nine of Wands",
+      "number": 9,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "nine",
+      "keywords": [
+        "resilience",
+        "persistence",
+        "guardedness",
+        "stamina",
+        "determination",
+        "last push",
+        "wounded warrior",
+        "boundaries"
+      ],
+      "upright": "Resilience in the face of challenges, persistence despite setbacks, and guarding your achievements.",
+      "reversed": "Giving up too early, excessive defensiveness, or being overwhelmed by challenges.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, nearly there: one more stand and it holds"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Moon",
+        "sign": "Sagittarius",
+        "decan": 2,
+        "dates": "December 3-12",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands09.webp",
+      "url": "https://tarostarot.com/tarot-cards/nine-of-wands"
+    },
+    {
+      "id": "ten-of-wands",
+      "name": "Ten of Wands",
+      "number": 10,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "ten",
+      "keywords": [
+        "burden",
+        "responsibility",
+        "hard work",
+        "completion",
+        "overwhelm",
+        "dedication",
+        "success through effort",
+        "heavy load"
+      ],
+      "upright": "Heavy responsibilities, hard work paying off, and approaching the completion of a major goal.",
+      "reversed": "Releasing burdens, delegating responsibilities, or avoiding necessary commitments.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: the load is too heavy to carry as it is"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": "Saturn",
+        "sign": "Sagittarius",
+        "decan": 3,
+        "dates": "December 13-21",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands10.webp",
+      "url": "https://tarostarot.com/tarot-cards/ten-of-wands"
+    },
+    {
+      "id": "page-of-wands",
+      "name": "Page of Wands",
+      "number": 11,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "page",
+      "keywords": [
+        "enthusiasm",
+        "exploration",
+        "creative messenger",
+        "inspiration",
+        "new ideas",
+        "adventure",
+        "spontaneity",
+        "youthful energy"
+      ],
+      "upright": "Enthusiastic exploration, creative inspiration, and messages about new opportunities.",
+      "reversed": "Lack of direction, impulsiveness, or blocked creative messages.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: good news, a new spark, an eager start"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Earth of Fire"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands11.webp",
+      "url": "https://tarostarot.com/tarot-cards/page-of-wands"
+    },
+    {
+      "id": "knight-of-wands",
+      "name": "Knight of Wands",
+      "number": 12,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "knight",
+      "keywords": [
+        "action",
+        "adventure",
+        "impulsiveness",
+        "haste",
+        "passion",
+        "travel",
+        "change",
+        "fearlessness"
+      ],
+      "upright": "Swift action, passionate pursuit of goals, and fearless adventure.",
+      "reversed": "Recklessness, impulsiveness without direction, or frustrated action.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, at full speed; aim before you charge"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Fire of Fire"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands12.webp",
+      "url": "https://tarostarot.com/tarot-cards/knight-of-wands"
+    },
+    {
+      "id": "queen-of-wands",
+      "name": "Queen of Wands",
+      "number": 13,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "queen",
+      "keywords": [
+        "confidence",
+        "determination",
+        "charisma",
+        "leadership",
+        "warmth",
+        "courage",
+        "independence",
+        "vibrant energy"
+      ],
+      "upright": "Confident leadership, charismatic personality, and the ability to inspire and attract others.",
+      "reversed": "Lack of confidence, jealousy, or using charm manipulatively.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: confidence attracts the result"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Water of Fire"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands13.webp",
+      "url": "https://tarostarot.com/tarot-cards/queen-of-wands"
+    },
+    {
+      "id": "king-of-wands",
+      "name": "King of Wands",
+      "number": 14,
+      "arcana": "minor",
+      "suit": "wands",
+      "rank": "king",
+      "keywords": [
+        "leadership mastery",
+        "visionary",
+        "authority",
+        "inspiration",
+        "entrepreneur",
+        "mentor",
+        "natural leader",
+        "creative vision"
+      ],
+      "upright": "Masterful leadership, visionary thinking, and the ability to inspire others to achieve great things.",
+      "reversed": "Authoritarian behavior, abuse of power, or inability to lead effectively.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, with leadership and a long view"
+      },
+      "element": "fire",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Air of Fire"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Wands14.webp",
+      "url": "https://tarostarot.com/tarot-cards/king-of-wands"
+    },
+    {
+      "id": "ace-of-cups",
+      "name": "Ace of Cups",
+      "number": 1,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "ace",
+      "keywords": [
+        "new love",
+        "emotional beginnings",
+        "spiritual fulfillment",
+        "compassion",
+        "intuition",
+        "emotional renewal",
+        "divine love",
+        "overflowing emotions"
+      ],
+      "upright": "New emotional beginnings, spiritual awakening, and overflowing love and compassion.",
+      "reversed": "Emotional blockages, repressed feelings, or difficulty expressing or receiving love.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: a new feeling, offered freely"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups01.webp",
+      "url": "https://tarostarot.com/tarot-cards/ace-of-cups"
+    },
+    {
+      "id": "two-of-cups",
+      "name": "Two of Cups",
+      "number": 2,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "two",
+      "keywords": [
+        "partnership",
+        "love connection",
+        "emotional harmony",
+        "mutual attraction",
+        "soulmate",
+        "unity",
+        "cooperation",
+        "romantic bond"
+      ],
+      "upright": "Harmonious partnerships, mutual connections, and the joy of shared emotional experiences.",
+      "reversed": "Relationship disharmony, imbalanced partnerships, or disconnection from others.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: mutual, matched and meant to be shared"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Venus",
+        "sign": "Cancer",
+        "decan": 1,
+        "dates": "June 21 - July 1",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups02.webp",
+      "url": "https://tarostarot.com/tarot-cards/two-of-cups"
+    },
+    {
+      "id": "three-of-cups",
+      "name": "Three of Cups",
+      "number": 3,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "three",
+      "keywords": [
+        "celebration",
+        "friendship",
+        "community",
+        "creative collaboration",
+        "social harmony",
+        "shared joy",
+        "teamwork",
+        "reunion"
+      ],
+      "upright": "Celebration, friendship, and the joy of community and creative collaboration.",
+      "reversed": "Social conflicts, isolation from community, or superficial relationships lacking depth.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: celebration, friends and good news shared"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Mercury",
+        "sign": "Cancer",
+        "decan": 2,
+        "dates": "July 2-11",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups03.webp",
+      "url": "https://tarostarot.com/tarot-cards/three-of-cups"
+    },
+    {
+      "id": "four-of-cups",
+      "name": "Four of Cups",
+      "number": 4,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "four",
+      "keywords": [
+        "contemplation",
+        "apathy",
+        "missed opportunities",
+        "emotional withdrawal",
+        "boredom",
+        "introspection",
+        "dissatisfaction",
+        "reevaluation"
+      ],
+      "upright": "Contemplation, emotional withdrawal, and the need to reassess current situations and opportunities.",
+      "reversed": "Renewed motivation, accepting opportunities, or emerging from a period of apathy and withdrawal.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No for now: the offer is there and you are not looking at it"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Moon",
+        "sign": "Cancer",
+        "decan": 3,
+        "dates": "July 12-21",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups04.webp",
+      "url": "https://tarostarot.com/tarot-cards/four-of-cups"
+    },
+    {
+      "id": "five-of-cups",
+      "name": "Five of Cups",
+      "number": 5,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "five",
+      "keywords": [
+        "loss",
+        "grief",
+        "disappointment",
+        "emotional setback",
+        "regret",
+        "mourning",
+        "learning from failure",
+        "moving forward"
+      ],
+      "upright": "Loss, grief, and disappointment, but with hope for recovery and lessons to be learned.",
+      "reversed": "Recovery from loss, acceptance of past disappointments, or moving forward with renewed hope.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: grief is in charge, with two cups still standing"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Mars",
+        "sign": "Scorpio",
+        "decan": 1,
+        "dates": "October 23 - November 1",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups05.webp",
+      "url": "https://tarostarot.com/tarot-cards/five-of-cups"
+    },
+    {
+      "id": "six-of-cups",
+      "name": "Six of Cups",
+      "number": 6,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "six",
+      "keywords": [
+        "nostalgia",
+        "childhood memories",
+        "innocence",
+        "past connections",
+        "emotional healing",
+        "simple pleasures",
+        "reunion",
+        "inner child"
+      ],
+      "upright": "Nostalgia, childhood memories, and finding healing and joy through connections to the past.",
+      "reversed": "Living in the past, inability to move forward, or romanticizing memories unhealthily.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: kindness, familiarity and something from the past returning"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Sun",
+        "sign": "Scorpio",
+        "decan": 2,
+        "dates": "November 2-12",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups06.webp",
+      "url": "https://tarostarot.com/tarot-cards/six-of-cups"
+    },
+    {
+      "id": "seven-of-cups",
+      "name": "Seven of Cups",
+      "number": 7,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "seven",
+      "keywords": [
+        "illusions",
+        "multiple choices",
+        "wishful thinking",
+        "fantasy",
+        "unrealistic dreams",
+        "confusion",
+        "temptation",
+        "need for focus"
+      ],
+      "upright": "Multiple options creating confusion, illusions, and the need to distinguish between realistic goals and fantasies.",
+      "reversed": "Gaining clarity, making decisive choices, or coming down from illusions to face reality.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: too many options and none of them chosen"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Venus",
+        "sign": "Scorpio",
+        "decan": 3,
+        "dates": "November 13-22",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups07.webp",
+      "url": "https://tarostarot.com/tarot-cards/seven-of-cups"
+    },
+    {
+      "id": "eight-of-cups",
+      "name": "Eight of Cups",
+      "number": 8,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "eight",
+      "keywords": [
+        "spiritual seeking",
+        "abandonment",
+        "moving on",
+        "search for meaning",
+        "emotional withdrawal",
+        "inner journey",
+        "dissatisfaction",
+        "quest for truth"
+      ],
+      "upright": "Spiritual seeking, abandoning what no longer serves, and embarking on a journey for deeper meaning.",
+      "reversed": "Fear of abandoning security, avoiding necessary change, or returning to what was left behind.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: the honest answer is to walk away"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Saturn",
+        "sign": "Pisces",
+        "decan": 1,
+        "dates": "February 19-28",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups08.webp",
+      "url": "https://tarostarot.com/tarot-cards/eight-of-cups"
+    },
+    {
+      "id": "nine-of-cups",
+      "name": "Nine of Cups",
+      "number": 9,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "nine",
+      "keywords": [
+        "emotional fulfillment",
+        "satisfaction",
+        "wishes coming true",
+        "contentment",
+        "gratitude",
+        "emotional abundance",
+        "personal happiness",
+        "achieving dreams"
+      ],
+      "upright": "Emotional fulfillment, satisfaction, wishes coming true, and deep personal contentment.",
+      "reversed": "Inner dissatisfaction, unrealistic expectations, or superficial happiness that lacks depth.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: the wish card, and the wish is granted"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Jupiter",
+        "sign": "Pisces",
+        "decan": 2,
+        "dates": "March 1-10",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups09.webp",
+      "url": "https://tarostarot.com/tarot-cards/nine-of-cups"
+    },
+    {
+      "id": "ten-of-cups",
+      "name": "Ten of Cups",
+      "number": 10,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "ten",
+      "keywords": [
+        "emotional fulfillment",
+        "family harmony",
+        "lasting happiness",
+        "community joy",
+        "emotional legacy",
+        "perfect love",
+        "domestic bliss",
+        "generational healing"
+      ],
+      "upright": "Complete emotional fulfillment, family harmony, and the achievement of lasting happiness.",
+      "reversed": "Family discord, unrealistic relationship expectations, or temporary disruption of harmony.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: lasting happiness, family and a home that holds"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": "Mars",
+        "sign": "Pisces",
+        "decan": 3,
+        "dates": "March 11-20",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups10.webp",
+      "url": "https://tarostarot.com/tarot-cards/ten-of-cups"
+    },
+    {
+      "id": "page-of-cups",
+      "name": "Page of Cups",
+      "number": 11,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "page",
+      "keywords": [
+        "emotional messenger",
+        "creative inspiration",
+        "intuitive messages",
+        "romantic idealism",
+        "artistic sensitivity",
+        "emotional learning",
+        "psychic development",
+        "youthful wonder"
+      ],
+      "upright": "Emotional messages, creative inspiration, and openness to intuitive guidance and new emotional experiences.",
+      "reversed": "Blocked creativity, emotional immaturity, or ignoring intuitive messages and inner guidance.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: a gentle surprise, a message, a feeling spoken"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Earth of Water"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups11.webp",
+      "url": "https://tarostarot.com/tarot-cards/page-of-cups"
+    },
+    {
+      "id": "knight-of-cups",
+      "name": "Knight of Cups",
+      "number": 12,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "knight",
+      "keywords": [
+        "romantic pursuit",
+        "emotional action",
+        "following dreams",
+        "passionate idealism",
+        "artistic quest",
+        "emotional courage",
+        "chivalrous love",
+        "heart over head"
+      ],
+      "upright": "Following your heart, pursuing dreams with passion, and taking action based on emotional truth.",
+      "reversed": "Unrealistic dreams, emotional manipulation, or acting on emotion without considering consequences.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: an offer made from the heart, arriving slowly"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Air of Water"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups12.webp",
+      "url": "https://tarostarot.com/tarot-cards/knight-of-cups"
+    },
+    {
+      "id": "queen-of-cups",
+      "name": "Queen of Cups",
+      "number": 13,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "queen",
+      "keywords": [
+        "emotional mastery",
+        "psychic intuition",
+        "compassionate leadership",
+        "nurturing wisdom",
+        "empathetic understanding",
+        "spiritual motherhood",
+        "emotional healing",
+        "intuitive guidance"
+      ],
+      "upright": "Emotional mastery, intuitive wisdom, and the ability to nurture and heal through compassionate understanding.",
+      "reversed": "Emotional overwhelm, codependency, or losing boundaries in attempts to help others.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: kindness and intuition lead to the right result"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Water of Water"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups13.webp",
+      "url": "https://tarostarot.com/tarot-cards/queen-of-cups"
+    },
+    {
+      "id": "king-of-cups",
+      "name": "King of Cups",
+      "number": 14,
+      "arcana": "minor",
+      "suit": "cups",
+      "rank": "king",
+      "keywords": [
+        "emotional authority",
+        "balanced leadership",
+        "wise counsel",
+        "emotional mastery",
+        "diplomatic guidance",
+        "compassionate control",
+        "mature wisdom",
+        "calm strength"
+      ],
+      "upright": "Emotional mastery, wise leadership, and the ability to remain calm and balanced in turbulent situations.",
+      "reversed": "Emotional manipulation, moodiness affecting leadership, or suppressed feelings leading to control issues.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, through calm and composure; the sea is rough and the throne is steady"
+      },
+      "element": "water",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Fire of Water"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Cups14.webp",
+      "url": "https://tarostarot.com/tarot-cards/king-of-cups"
+    },
+    {
+      "id": "ace-of-swords",
+      "name": "Ace of Swords",
+      "number": 1,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "ace",
+      "keywords": [
+        "mental clarity",
+        "breakthrough insight",
+        "truth revealed",
+        "new ideas",
+        "intellectual power",
+        "cutting through confusion",
+        "justice",
+        "mental breakthrough"
+      ],
+      "upright": "Mental clarity, breakthrough insights, and the power of truth to cut through confusion.",
+      "reversed": "Mental confusion, blocked insights, or misuse of intellectual power.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: clarity cuts through, and the truth favours you"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords01.webp",
+      "url": "https://tarostarot.com/tarot-cards/ace-of-swords"
+    },
+    {
+      "id": "two-of-swords",
+      "name": "Two of Swords",
+      "number": 2,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "two",
+      "keywords": [
+        "mental stalemate",
+        "difficult decisions",
+        "avoidance",
+        "balanced perspective",
+        "indecision",
+        "mental blockade",
+        "conflicting information",
+        "deliberation"
+      ],
+      "upright": "Mental stalemate, difficult decisions requiring careful consideration, and the need to remove mental blindfolds.",
+      "reversed": "Breaking through indecision, gaining clarity, or making necessary but difficult choices.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: a stalemate held in place by a blindfold"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Moon",
+        "sign": "Libra",
+        "decan": 1,
+        "dates": "September 23 - October 2",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords02.webp",
+      "url": "https://tarostarot.com/tarot-cards/two-of-swords"
+    },
+    {
+      "id": "three-of-swords",
+      "name": "Three of Swords",
+      "number": 3,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "three",
+      "keywords": [
+        "heartbreak",
+        "emotional pain",
+        "betrayal",
+        "grief",
+        "sorrow",
+        "separation",
+        "loss",
+        "emotional healing needed"
+      ],
+      "upright": "Heartbreak, emotional pain, and the necessary process of grieving loss or betrayal.",
+      "reversed": "Healing from heartbreak, releasing pain, or moving forward after emotional trauma.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: heartbreak is the subject, and healing is the sequel"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Saturn",
+        "sign": "Libra",
+        "decan": 2,
+        "dates": "October 3-12",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords03.webp",
+      "url": "https://tarostarot.com/tarot-cards/three-of-swords"
+    },
+    {
+      "id": "four-of-swords",
+      "name": "Four of Swords",
+      "number": 4,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "four",
+      "keywords": [
+        "rest",
+        "mental recuperation",
+        "meditation",
+        "strategic pause",
+        "mental peace",
+        "contemplation",
+        "recovery",
+        "inner stillness"
+      ],
+      "upright": "Mental rest, strategic pause, and the need for contemplation before taking action.",
+      "reversed": "Restlessness, inability to rest, or emerging from a period of contemplation ready for action.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No for now: rest first, then the answer"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Jupiter",
+        "sign": "Libra",
+        "decan": 3,
+        "dates": "October 13-22",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords04.webp",
+      "url": "https://tarostarot.com/tarot-cards/four-of-swords"
+    },
+    {
+      "id": "five-of-swords",
+      "name": "Five of Swords",
+      "number": 5,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "five",
+      "keywords": [
+        "conflict",
+        "defeat",
+        "hollow victory",
+        "win at all costs",
+        "bullying",
+        "unfair advantage",
+        "losing battle",
+        "empty triumph"
+      ],
+      "upright": "Conflict, defeat, and hollow victories that come at too high a cost.",
+      "reversed": "Learning from defeat, releasing competitive patterns, or seeking reconciliation.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: a win that costs more than it is worth"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Venus",
+        "sign": "Aquarius",
+        "decan": 1,
+        "dates": "January 20-29",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords05.webp",
+      "url": "https://tarostarot.com/tarot-cards/five-of-swords"
+    },
+    {
+      "id": "six-of-swords",
+      "name": "Six of Swords",
+      "number": 6,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "six",
+      "keywords": [
+        "transition",
+        "moving on",
+        "guidance",
+        "journey",
+        "leaving difficulties",
+        "calmer waters",
+        "gradual healing",
+        "assisted passage"
+      ],
+      "upright": "Transition from difficulties, gradual healing, and guided journey toward better times.",
+      "reversed": "Resistance to change, delayed transition, or difficulty accepting help.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: a quiet crossing to calmer water"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Mercury",
+        "sign": "Aquarius",
+        "decan": 2,
+        "dates": "January 30 - February 8",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords06.webp",
+      "url": "https://tarostarot.com/tarot-cards/six-of-swords"
+    },
+    {
+      "id": "seven-of-swords",
+      "name": "Seven of Swords",
+      "number": 7,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "seven",
+      "keywords": [
+        "deception",
+        "theft",
+        "stealth",
+        "getting away",
+        "strategic thinking",
+        "cunning",
+        "avoiding consequences",
+        "mental cleverness"
+      ],
+      "upright": "Deception, theft, strategic thinking, or getting away with questionable behavior.",
+      "reversed": "Getting caught, confession, or choosing honesty over deception.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: something is being taken or hidden"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Moon",
+        "sign": "Aquarius",
+        "decan": 3,
+        "dates": "February 9-18",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords07.webp",
+      "url": "https://tarostarot.com/tarot-cards/seven-of-swords"
+    },
+    {
+      "id": "eight-of-swords",
+      "name": "Eight of Swords",
+      "number": 8,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "eight",
+      "keywords": [
+        "mental imprisonment",
+        "feeling trapped",
+        "self-limiting beliefs",
+        "victim mentality",
+        "paralysis",
+        "restricted thinking",
+        "helplessness",
+        "mental barriers"
+      ],
+      "upright": "Mental imprisonment, self-limiting beliefs, and feeling trapped by circumstances or thinking patterns.",
+      "reversed": "Breaking free from mental imprisonment, recognizing options, or taking steps toward liberation.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No for now: bound loosely, blindfolded, and free to leave"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Jupiter",
+        "sign": "Gemini",
+        "decan": 1,
+        "dates": "May 21-31",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords08.webp",
+      "url": "https://tarostarot.com/tarot-cards/eight-of-swords"
+    },
+    {
+      "id": "nine-of-swords",
+      "name": "Nine of Swords",
+      "number": 9,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "nine",
+      "keywords": [
+        "anxiety",
+        "nightmares",
+        "worry",
+        "mental anguish",
+        "overthinking",
+        "despair",
+        "sleepless nights",
+        "psychological torment"
+      ],
+      "upright": "Anxiety, worry, and mental anguish causing sleepless nights and psychological distress.",
+      "reversed": "Recovery from anxiety, overcoming worry, or finding relief from mental anguish.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: the fear is real, the thing feared mostly is not"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Mars",
+        "sign": "Gemini",
+        "decan": 2,
+        "dates": "June 1-10",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords09.webp",
+      "url": "https://tarostarot.com/tarot-cards/nine-of-swords"
+    },
+    {
+      "id": "ten-of-swords",
+      "name": "Ten of Swords",
+      "number": 10,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "ten",
+      "keywords": [
+        "rock bottom",
+        "betrayal",
+        "painful endings",
+        "complete defeat",
+        "hitting bottom",
+        "dramatic conclusion",
+        "new dawn coming",
+        "transformation through pain"
+      ],
+      "upright": "Rock bottom, complete defeat, but also the end of a painful cycle and promise of new beginnings.",
+      "reversed": "Recovery from rock bottom, avoiding complete defeat, or gradual healing from trauma.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: it is over, and the dawn behind it is real"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": "Sun",
+        "sign": "Gemini",
+        "decan": 3,
+        "dates": "June 11-20",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords10.webp",
+      "url": "https://tarostarot.com/tarot-cards/ten-of-swords"
+    },
+    {
+      "id": "page-of-swords",
+      "name": "Page of Swords",
+      "number": 11,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "page",
+      "keywords": [
+        "mental clarity",
+        "new ideas",
+        "communication",
+        "intellectual curiosity",
+        "vigilance",
+        "learning",
+        "mental agility",
+        "fresh perspectives"
+      ],
+      "upright": "Mental clarity, intellectual curiosity, and eagerness to learn and communicate new ideas.",
+      "reversed": "Mental scattered energy, gossip, or using intellect for harmful purposes.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: curiosity, a message and sharp new information"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Earth of Air"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords11.webp",
+      "url": "https://tarostarot.com/tarot-cards/page-of-swords"
+    },
+    {
+      "id": "knight-of-swords",
+      "name": "Knight of Swords",
+      "number": 12,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "knight",
+      "keywords": [
+        "action-oriented thinking",
+        "charging ahead",
+        "impulsiveness",
+        "direct communication",
+        "intellectual courage",
+        "hasty decisions",
+        "mental determination",
+        "quick action"
+      ],
+      "upright": "Quick action on ideas, charging ahead with determination, but potentially lacking patience for planning.",
+      "reversed": "Reckless actions, poor communication, or scattered mental energy causing problems.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, fast and blunt; mind what the charge knocks over"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Air of Air"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords12.webp",
+      "url": "https://tarostarot.com/tarot-cards/knight-of-swords"
+    },
+    {
+      "id": "queen-of-swords",
+      "name": "Queen of Swords",
+      "number": 13,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "queen",
+      "keywords": [
+        "sharp intellect",
+        "clear communication",
+        "independence",
+        "wise discernment",
+        "intellectual authority",
+        "direct honesty",
+        "mental clarity",
+        "decisive thinking"
+      ],
+      "upright": "Sharp intellect, clear communication, and wise discernment gained through life experience.",
+      "reversed": "Harsh criticism, cold communication, or using intellect as a weapon.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, on honest terms: clear eyes, clear words"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Water of Air"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords13.webp",
+      "url": "https://tarostarot.com/tarot-cards/queen-of-swords"
+    },
+    {
+      "id": "king-of-swords",
+      "name": "King of Swords",
+      "number": 14,
+      "arcana": "minor",
+      "suit": "swords",
+      "rank": "king",
+      "keywords": [
+        "mental authority",
+        "intellectual leadership",
+        "justice",
+        "communication mastery",
+        "logical thinking",
+        "fair judgment",
+        "strategic planning",
+        "authoritative wisdom"
+      ],
+      "upright": "Mental authority, intellectual leadership, and the ability to make fair decisions through logical analysis.",
+      "reversed": "Authoritarian behavior, harsh judgment, or misuse of intellectual power.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, by logic and authority: the ruling is sound"
+      },
+      "element": "air",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Fire of Air"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Swords14.webp",
+      "url": "https://tarostarot.com/tarot-cards/king-of-swords"
+    },
+    {
+      "id": "ace-of-pentacles",
+      "name": "Ace of Pentacles",
+      "number": 1,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "ace",
+      "keywords": [
+        "new opportunity",
+        "financial beginnings",
+        "material manifestation",
+        "prosperity seed",
+        "abundance potential",
+        "practical foundation",
+        "earthly rewards",
+        "tangible results"
+      ],
+      "upright": "A golden opportunity for material abundance and financial prosperity is being offered.",
+      "reversed": "Missed opportunities, poor financial decisions, or lack of practical planning.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: a solid opportunity, offered and real"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles01.webp",
+      "url": "https://tarostarot.com/tarot-cards/ace-of-pentacles"
+    },
+    {
+      "id": "two-of-pentacles",
+      "name": "Two of Pentacles",
+      "number": 2,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "two",
+      "keywords": [
+        "balance",
+        "juggling resources",
+        "adaptability",
+        "multitasking",
+        "flexibility",
+        "time management",
+        "priorities",
+        "resourcefulness"
+      ],
+      "upright": "Successfully juggling multiple responsibilities while maintaining balance and adaptability.",
+      "reversed": "Overwhelmed by too many responsibilities, poor time management, or lack of prioritization.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, if you can keep both in the air"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Jupiter",
+        "sign": "Capricorn",
+        "decan": 1,
+        "dates": "December 22-30",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles02.webp",
+      "url": "https://tarostarot.com/tarot-cards/two-of-pentacles"
+    },
+    {
+      "id": "three-of-pentacles",
+      "name": "Three of Pentacles",
+      "number": 3,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "three",
+      "keywords": [
+        "teamwork",
+        "collaboration",
+        "skill building",
+        "craftsmanship",
+        "apprenticeship",
+        "shared vision",
+        "professional growth",
+        "expertise"
+      ],
+      "upright": "Success through teamwork, collaboration, and the sharing of skills and expertise.",
+      "reversed": "Lack of teamwork, conflicts in collaboration, or working alone when partnership is needed.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, through teamwork and skill recognised"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Mars",
+        "sign": "Capricorn",
+        "decan": 2,
+        "dates": "December 31 - January 9",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles03.webp",
+      "url": "https://tarostarot.com/tarot-cards/three-of-pentacles"
+    },
+    {
+      "id": "four-of-pentacles",
+      "name": "Four of Pentacles",
+      "number": 4,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "four",
+      "keywords": [
+        "security",
+        "control",
+        "conservation",
+        "possessiveness",
+        "stability",
+        "hoarding",
+        "protection",
+        "material attachment"
+      ],
+      "upright": "A focus on security and stability through careful conservation and control of resources.",
+      "reversed": "Excessive materialism, greed, or the opposite extreme of reckless spending and insecurity.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: holding on too tightly for anything to move"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Sun",
+        "sign": "Capricorn",
+        "decan": 3,
+        "dates": "January 10-19",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles04.webp",
+      "url": "https://tarostarot.com/tarot-cards/four-of-pentacles"
+    },
+    {
+      "id": "five-of-pentacles",
+      "name": "Five of Pentacles",
+      "number": 5,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "five",
+      "keywords": [
+        "financial hardship",
+        "poverty",
+        "isolation",
+        "spiritual poverty",
+        "seeking help",
+        "material loss",
+        "feeling excluded",
+        "temporary setback"
+      ],
+      "upright": "A period of financial hardship or spiritual poverty that requires seeking support and help.",
+      "reversed": "Recovery from hardship, receiving help, or beginning to overcome difficulties.",
+      "yes_no": {
+        "upright": "no",
+        "reversed": "yes",
+        "summary": "No: hardship for now, with help nearby and unasked for"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Mercury",
+        "sign": "Taurus",
+        "decan": 1,
+        "dates": "April 21-30",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles05.webp",
+      "url": "https://tarostarot.com/tarot-cards/five-of-pentacles"
+    },
+    {
+      "id": "six-of-pentacles",
+      "name": "Six of Pentacles",
+      "number": 6,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "six",
+      "keywords": [
+        "generosity",
+        "charity",
+        "sharing wealth",
+        "balanced exchange",
+        "giving",
+        "receiving",
+        "gratitude",
+        "community support"
+      ],
+      "upright": "A time of balanced giving and receiving, generosity, and sharing abundance with others.",
+      "reversed": "Imbalanced giving and receiving, strings attached to generosity, or misuse of power.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: generosity flows, and the scales stay fair"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Moon",
+        "sign": "Taurus",
+        "decan": 2,
+        "dates": "May 1-10",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles06.webp",
+      "url": "https://tarostarot.com/tarot-cards/six-of-pentacles"
+    },
+    {
+      "id": "seven-of-pentacles",
+      "name": "Seven of Pentacles",
+      "number": 7,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "seven",
+      "keywords": [
+        "investment",
+        "patience",
+        "long-term view",
+        "assessment",
+        "perseverance",
+        "waiting for results",
+        "cultivation",
+        "progress review"
+      ],
+      "upright": "A time of assessment and patience as your long-term investments begin to show results.",
+      "reversed": "Impatience with results, poor long-term planning, or abandoning projects too early.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, in time: the crop is growing and not yet picked"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Saturn",
+        "sign": "Taurus",
+        "decan": 3,
+        "dates": "May 11-20",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles07.webp",
+      "url": "https://tarostarot.com/tarot-cards/seven-of-pentacles"
+    },
+    {
+      "id": "eight-of-pentacles",
+      "name": "Eight of Pentacles",
+      "number": 8,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "eight",
+      "keywords": [
+        "craftsmanship",
+        "dedication",
+        "skill mastery",
+        "hard work",
+        "apprenticeship",
+        "focus",
+        "quality",
+        "perfectionism"
+      ],
+      "upright": "Dedication to mastering your craft through focused effort and attention to detail.",
+      "reversed": "Perfectionism, lack of focus, or poor work quality undermining success.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, through practice: skill is being built coin by coin"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Sun",
+        "sign": "Virgo",
+        "decan": 1,
+        "dates": "August 23 - September 1",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles08.webp",
+      "url": "https://tarostarot.com/tarot-cards/eight-of-pentacles"
+    },
+    {
+      "id": "nine-of-pentacles",
+      "name": "Nine of Pentacles",
+      "number": 9,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "nine",
+      "keywords": [
+        "abundance",
+        "luxury",
+        "self-sufficiency",
+        "independence",
+        "refinement",
+        "material success",
+        "personal achievement",
+        "sophisticated living"
+      ],
+      "upright": "Enjoying the fruits of your labor through abundance, luxury, and self-sufficient independence.",
+      "reversed": "Financial setbacks, dependence on others, or inability to enjoy earned success.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: independence, comfort and the reward already earned"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Venus",
+        "sign": "Virgo",
+        "decan": 2,
+        "dates": "September 2-11",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles09.webp",
+      "url": "https://tarostarot.com/tarot-cards/nine-of-pentacles"
+    },
+    {
+      "id": "ten-of-pentacles",
+      "name": "Ten of Pentacles",
+      "number": 10,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "ten",
+      "keywords": [
+        "legacy",
+        "family wealth",
+        "inheritance",
+        "generational success",
+        "long-term security",
+        "tradition",
+        "completion",
+        "lasting prosperity"
+      ],
+      "upright": "The completion of material success and the creation of lasting wealth and security for future generations.",
+      "reversed": "Family conflicts over money, loss of wealth, or failure to create lasting security.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: lasting wealth, family and something that outlives you"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": "Mercury",
+        "sign": "Virgo",
+        "decan": 3,
+        "dates": "September 12-22",
+        "elemental_dignity": null
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles10.webp",
+      "url": "https://tarostarot.com/tarot-cards/ten-of-pentacles"
+    },
+    {
+      "id": "page-of-pentacles",
+      "name": "Page of Pentacles",
+      "number": 11,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "page",
+      "keywords": [
+        "student",
+        "practical learning",
+        "opportunity",
+        "manifestation",
+        "study",
+        "new ventures",
+        "financial learning",
+        "material focus"
+      ],
+      "upright": "A student of practical wisdom, learning opportunities, and messages about material manifestation.",
+      "reversed": "Lack of focus in learning, missed opportunities, or impractical approaches to material matters.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: a practical opportunity worth studying"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Earth of Earth"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles11.webp",
+      "url": "https://tarostarot.com/tarot-cards/page-of-pentacles"
+    },
+    {
+      "id": "knight-of-pentacles",
+      "name": "Knight of Pentacles",
+      "number": 12,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "knight",
+      "keywords": [
+        "hard work",
+        "routine",
+        "persistence",
+        "methodical",
+        "reliability",
+        "patience",
+        "steady progress",
+        "dedication"
+      ],
+      "upright": "Methodical progress through hard work, routine, and persistent dedication to your goals.",
+      "reversed": "Stagnation, stubbornness, or excessive focus on routine without progress or flexibility.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes, slowly and surely: the field gets ploughed"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Fire of Earth"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles12.webp",
+      "url": "https://tarostarot.com/tarot-cards/knight-of-pentacles"
+    },
+    {
+      "id": "queen-of-pentacles",
+      "name": "Queen of Pentacles",
+      "number": 13,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "queen",
+      "keywords": [
+        "nurturing",
+        "practical wisdom",
+        "abundance",
+        "generosity",
+        "earth mother",
+        "material comfort",
+        "caring provider",
+        "domestic harmony"
+      ],
+      "upright": "Nurturing abundance through practical wisdom, generosity, and caring provision for others.",
+      "reversed": "Neglecting self-care, financial insecurity, or becoming overly controlling in caring for others.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: practical care, comfort and provision"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Water of Earth"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles13.webp",
+      "url": "https://tarostarot.com/tarot-cards/queen-of-pentacles"
+    },
+    {
+      "id": "king-of-pentacles",
+      "name": "King of Pentacles",
+      "number": 14,
+      "arcana": "minor",
+      "suit": "pentacles",
+      "rank": "king",
+      "keywords": [
+        "wealth",
+        "business success",
+        "leadership",
+        "financial mastery",
+        "material abundance",
+        "entrepreneurship",
+        "practical wisdom",
+        "generous authority"
+      ],
+      "upright": "Mastery of the material world through successful leadership, business acumen, and generous abundance.",
+      "reversed": "Greed, corruption, or misuse of wealth and power for selfish or harmful purposes.",
+      "yes_no": {
+        "upright": "yes",
+        "reversed": "no",
+        "summary": "Yes: success, wealth and a foundation that holds"
+      },
+      "element": "earth",
+      "astrology": {
+        "planet": null,
+        "sign": null,
+        "decan": null,
+        "dates": null,
+        "elemental_dignity": "Air of Earth"
+      },
+      "image": "https://cdn.tarostarot.com/cards/Pentacles14.webp",
+      "url": "https://tarostarot.com/tarot-cards/king-of-pentacles"
+    }
+  ]
+}

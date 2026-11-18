@@ -33,14 +33,17 @@
           "idleEnabled": false
         }
       },
-      "mediaRoots": ["/absolute/path/to/approved/media"]
+      "mediaRoots": [
+        "/absolute/path/to/approved/media",
+        "/absolute/path/to/rion-workspace/media/outbound/tarot"
+      ]
     }
   },
   "agents": {
     "entries": {
       "rion": {
         "workspace": "~/.openclaw/workspace-rion",
-        "tools": { "alsoAllow": ["snowluma_stickers"] },
+        "tools": { "alsoAllow": ["snowluma_stickers", "snowluma_tarot_draw"] },
         "identity": {
           "name": "璃音（Rion）",
           "emoji": "🐾"
